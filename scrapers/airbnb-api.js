@@ -328,6 +328,36 @@ function parseRoomDetails(html, roomUrl) {
       data.price.currency = 'USD';
     }
 
+    // Extract amenities using regex fallback
+    if (data.amenities.length === 0) {
+      const amenitySet = new Set();
+      // Find all amenity arrays in the HTML
+      const amenityMatches = html.matchAll(/"amenities":\[(.*?)\]/g);
+      for (const match of amenityMatches) {
+        try {
+          const amenitiesJson = JSON.parse('[' + match[1] + ']');
+          for (const amenity of amenitiesJson) {
+            if (amenity.title && amenity.available !== false) {
+              amenitySet.add(amenity.title);
+            }
+          }
+        } catch (e) {
+          // Try regex extraction as fallback
+          const titleMatches = match[1].matchAll(/"title":"([^"]+)"/g);
+          const availableMatches = match[1].matchAll(/"available":(true|false)/g);
+          const titles = [...titleMatches].map(m => m[1]);
+          const availables = [...availableMatches].map(m => m[1] === 'true');
+
+          for (let i = 0; i < titles.length; i++) {
+            if (availables[i] !== false) {
+              amenitySet.add(titles[i]);
+            }
+          }
+        }
+      }
+      data.amenities = [...amenitySet];
+    }
+
   } catch (error) {
     console.error('Error parsing room details:', error.message);
   }
