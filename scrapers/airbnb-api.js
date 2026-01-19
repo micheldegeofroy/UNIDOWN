@@ -183,16 +183,31 @@ function parseRoomDetails(html, roomUrl) {
     title: '',
     description: '',
     images: [],
-    host: {},
+    host: {
+      name: '',
+      profilePicture: '',
+      isSuperhost: false,
+      yearsHosting: 0
+    },
     amenities: [],
-    location: {},
+    location: {
+      city: '',
+      lat: null,
+      lng: null
+    },
     reviews: { count: 0, rating: 0 },
     price: {},
     propertyType: '',
     bedrooms: 0,
     bathrooms: 0,
     beds: 0,
-    maxGuests: 0
+    maxGuests: 0,
+    checkIn: '',
+    checkOut: '',
+    houseRules: [],
+    petFriendly: null,
+    smokingAllowed: null,
+    partiesAllowed: null
   };
 
   try {
@@ -385,6 +400,92 @@ function parseRoomDetails(html, roomUrl) {
       if (capacityMatch) {
         data.maxGuests = parseInt(capacityMatch[1]);
       }
+    }
+
+    // Extract property type
+    const propertyTypeMatch = html.match(/"propertyType":"([^"]+)"/);
+    if (propertyTypeMatch) {
+      data.propertyType = propertyTypeMatch[1];
+    }
+
+    // Extract host information
+    const hostNameMatch = html.match(/Hosted by ([^<"]+)/);
+    if (hostNameMatch) {
+      data.host.name = hostNameMatch[1].trim();
+    }
+
+    const superhostMatch = html.match(/"isSuperhost":(true|false)/);
+    if (superhostMatch) {
+      data.host.isSuperhost = superhostMatch[1] === 'true';
+    }
+
+    const hostPicMatch = html.match(/"hostAvatar":\{[^}]*"baseUrl":"([^"]+)"/);
+    if (hostPicMatch) {
+      data.host.profilePicture = hostPicMatch[1];
+    }
+
+    const yearsHostingMatch = html.match(/"title":"(\d+) years hosting"/);
+    if (yearsHostingMatch) {
+      data.host.yearsHosting = parseInt(yearsHostingMatch[1]);
+    }
+
+    // Extract review count
+    const reviewCountMatch = html.match(/"reviewCount":(\d+)/);
+    if (reviewCountMatch) {
+      data.reviews.count = parseInt(reviewCountMatch[1]);
+    }
+
+    // Extract rating
+    const ratingMatch = html.match(/"localizedRating":"([0-9.]+)"/);
+    if (ratingMatch && parseFloat(ratingMatch[1]) <= 5) {
+      data.reviews.rating = parseFloat(ratingMatch[1]);
+    }
+
+    // Extract location
+    const cityMatch = html.match(/"city":"([^"]+)"/);
+    if (cityMatch) {
+      data.location.city = cityMatch[1];
+    }
+
+    const latMatch = html.match(/"lat":([0-9.-]+)/);
+    const lngMatch = html.match(/"lng":([0-9.-]+)/);
+    if (latMatch) data.location.lat = parseFloat(latMatch[1]);
+    if (lngMatch) data.location.lng = parseFloat(lngMatch[1]);
+
+    // Extract check-in/check-out times
+    const checkInMatch = html.match(/Check-in after ([^"<]+)/);
+    if (checkInMatch) {
+      data.checkIn = checkInMatch[1].trim();
+    }
+
+    const checkOutMatch = html.match(/Checkout before ([^"<]+)/);
+    if (checkOutMatch) {
+      data.checkOut = checkOutMatch[1].trim();
+    }
+
+    // Extract house rules
+    const houseRulesSet = new Set();
+    const rulesMatches = html.matchAll(/"title":"(No [^"]+)"/g);
+    for (const match of rulesMatches) {
+      houseRulesSet.add(match[1]);
+    }
+    data.houseRules = [...houseRulesSet];
+
+    // Check pet policy
+    if (html.includes('"title":"No pets"') || html.includes('No pets')) {
+      data.petFriendly = false;
+    } else if (html.includes('Pets allowed') || html.includes('"title":"Pets allowed"')) {
+      data.petFriendly = true;
+    }
+
+    // Check smoking policy
+    if (html.includes('"title":"No smoking"') || html.includes('No smoking')) {
+      data.smokingAllowed = false;
+    }
+
+    // Check parties policy
+    if (html.includes('"title":"No parties"') || html.includes('No parties') || html.includes('NO PARTIES')) {
+      data.partiesAllowed = false;
     }
 
   } catch (error) {
