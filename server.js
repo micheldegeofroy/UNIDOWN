@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { scrapeAirbnbApi, searchAirbnbApi } = require('./scrapers/airbnb-api');
 const { scrapeAirbnb, searchAirbnbProperty, proxyManager: airbnbProxyManager } = require('./scrapers/airbnb');
+const { scrapeBookingApi, closeBrowser: closeBookingBrowser } = require('./scrapers/booking-api');
 const { ProxyManager } = require('./scrapers/stealth');
 
 const app = express();
@@ -66,9 +67,12 @@ app.post('/api/scrape', async (req, res) => {
       } else {
         result = await scrapeAirbnbApi(url);
       }
+    } else if (url.includes('booking.com')) {
+      // Booking.com scrape - uses Puppeteer with stealth
+      result = await scrapeBookingApi(url);
     } else {
       return res.status(400).json({
-        error: 'Please provide a valid Airbnb listing URL or property name.'
+        error: 'Please provide a valid Airbnb or Booking.com listing URL.'
       });
     }
 
@@ -105,8 +109,8 @@ app.post('/api/saved-urls', (req, res) => {
     return res.status(400).json({ error: 'Name and URL are required' });
   }
 
-  if (!url.includes('airbnb.com')) {
-    return res.status(400).json({ error: 'Please provide a valid Airbnb URL' });
+  if (!url.includes('airbnb.com') && !url.includes('booking.com')) {
+    return res.status(400).json({ error: 'Please provide a valid Airbnb or Booking.com URL' });
   }
 
   let savedUrls = [];
@@ -257,8 +261,13 @@ app.post('/api/listings/:id/update', async (req, res) => {
 
     console.log(`Updating listing ${id} from ${existingMetadata.sourceUrl}`);
 
-    // Re-scrape the listing
-    const result = await scrapeAirbnbApi(existingMetadata.sourceUrl);
+    // Re-scrape the listing based on platform
+    let result;
+    if (existingMetadata.platform === 'booking' || existingMetadata.sourceUrl.includes('booking.com')) {
+      result = await scrapeBookingApi(existingMetadata.sourceUrl);
+    } else {
+      result = await scrapeAirbnbApi(existingMetadata.sourceUrl);
+    }
 
     if (!result.success) {
       throw new Error('Failed to re-scrape listing');

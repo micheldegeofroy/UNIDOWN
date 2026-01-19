@@ -347,6 +347,25 @@
       background: #F7F7F7;
     }
 
+    .btn-tor-primary {
+      background: linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%);
+      color: white;
+    }
+
+    .btn-tor-primary:hover {
+      box-shadow: 0 4px 12px rgba(255,56,92,0.4);
+    }
+
+    .btn-tor-danger {
+      border-color: #C13515;
+      color: #C13515;
+    }
+
+    .btn-tor-danger:hover {
+      background: #C13515;
+      color: white;
+    }
+
 
     /* Saved URLs - Airbnb style */
     .saved-urls-section {
@@ -500,6 +519,129 @@
       color: #717171;
       margin-bottom: 16px;
       padding-left: 4px;
+    }
+
+    /* Custom Dropdown */
+    .custom-select {
+      position: relative;
+      flex: 1;
+    }
+
+    .custom-select-trigger {
+      height: 36px;
+      padding: 0 40px 0 12px;
+      border: 1px solid #B0B0B0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      transition: all 0.2s;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .custom-select-trigger:hover {
+      border-color: #222;
+    }
+
+    .custom-select-trigger:focus {
+      outline: none;
+      border-color: #222;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+    }
+
+    .custom-select-trigger::after {
+      content: '';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23222222' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    .custom-select.open .custom-select-trigger::after {
+      transform: translateY(-50%) rotate(180deg);
+    }
+
+    .custom-select-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #EBEBEB;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 1000;
+      max-height: 240px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .custom-select.open .custom-select-dropdown {
+      display: block;
+    }
+
+    .custom-select-option {
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.15s;
+      font-size: 14px;
+    }
+
+    .custom-select-option:hover {
+      background: #F7F7F7;
+    }
+
+    .custom-select-option.selected {
+      background: #FFF0F3;
+    }
+
+    .custom-select-option:first-child {
+      border-radius: 12px 12px 0 0;
+    }
+
+    .custom-select-option:last-child {
+      border-radius: 0 0 12px 12px;
+    }
+
+    .platform-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .platform-dot.airbnb {
+      background: #FF385C;
+    }
+
+    .platform-dot.booking {
+      background: #003580;
+    }
+
+    .custom-select-placeholder {
+      color: #717171;
+    }
+
+    .custom-select-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .status {
@@ -706,6 +848,11 @@
     .listing-platform.airbnb {
       background: #FFF0F1;
       color: #FF385C;
+    }
+
+    .listing-platform.booking {
+      background: #E8F4FD;
+      color: #003580;
     }
 
     .listing-title {
@@ -1004,25 +1151,36 @@
           <h3>Saved Properties</h3>
         </div>
 
+        <!-- Unified Scrape Input -->
         <div class="input-frame">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="background: #FF385C; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">AIRBNB</span>
+            <span style="background: #003580; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">BOOKING.COM</span>
+          </div>
+
           <div class="add-url-form">
-            <input type="url" id="propertyUrl" placeholder="https://www.airbnb.com/rooms/43574420" />
-            <button class="btn-add" onclick="addSavedUrl()">Add</button>
+            <input type="url" id="scrapeUrl" placeholder="Paste new URL or select saved property below..." />
+            <button class="btn btn-primary" onclick="smartScrape()" id="scrapeBtn" style="width: 100px;">Scrape</button>
           </div>
 
-          <div class="url-select-group">
-            <select id="savedUrlSelect" onchange="selectSavedUrl()">
-              <option value="">-- Select a saved property --</option>
-            </select>
-            <button class="btn btn-primary" id="downloadBtn" onclick="scrapeUrl()">
-              Scrape
-            </button>
+          <div class="url-select-group" style="margin-top: 12px;">
+            <div class="custom-select" id="propertySelect">
+              <div class="custom-select-trigger" tabindex="0" onclick="toggleDropdown()" onkeydown="handleDropdownKey(event)">
+                <span class="custom-select-placeholder">-- Or select from saved properties --</span>
+              </div>
+              <div class="custom-select-dropdown" id="propertyDropdown">
+                <!-- Options populated by JS -->
+              </div>
+            </div>
+            <input type="hidden" id="savedUrlSelect" value="">
+            <button class="btn btn-outline btn-danger btn-small" onclick="deleteSelectedProperty()" id="deleteBtn" style="width: 100px;" disabled>Delete</button>
           </div>
+
+          <p class="helper-text" style="margin-top: 12px; margin-bottom: 0;">
+            <span id="inputHint">New URLs are saved automatically. Existing properties aggregate new data.</span>
+          </p>
         </div>
 
-        <div id="savedUrlsList" class="saved-urls-list">
-          <div class="no-saved-urls">No saved properties yet. Add one above.</div>
-        </div>
       </div>
 
       <div id="status" class="status"></div>
@@ -1048,8 +1206,8 @@
         </div>
 
         <div class="tor-buttons">
-          <button class="btn-tor btn-tor-outline" id="torTestBtn" onclick="testTor()">Test</button>
-          <button class="btn-tor" id="torNewIpBtn" onclick="getNewTorIp()" disabled>New IP</button>
+          <button class="btn-tor btn-tor-outline btn-tor-danger" id="torTestBtn" onclick="testTor()">Test</button>
+          <button class="btn-tor btn-tor-primary" id="torNewIpBtn" onclick="getNewTorIp()" disabled>New IP</button>
         </div>
       </div>
     </div>
@@ -1145,124 +1303,136 @@
     }
 
     function renderSavedUrls() {
-      const container = document.getElementById('savedUrlsList');
-
-      if (savedUrls.length === 0) {
-        container.innerHTML = '<div class="no-saved-urls">No saved properties yet. Add one above.</div>';
-        return;
-      }
-
-      container.innerHTML = savedUrls.map(item => `
-        <div class="saved-url-item" onclick="selectPropertyFromList('${item.url}')">
-          <div class="saved-url-info">
-            <div class="saved-url-name">${item.name}</div>
-            <span class="saved-url-link">${item.url}</span>
-          </div>
-          <button class="btn-delete-url" onclick="event.stopPropagation(); deleteSavedUrl('${item.id}')">Delete</button>
-        </div>
-      `).join('');
-    }
-
-    function selectPropertyFromList(url) {
-      const select = document.getElementById('savedUrlSelect');
-      select.value = url;
-      localStorage.setItem('lastSelectedUrl', url);
+      // Just update the dropdown - no separate list needed
+      updateUrlDropdown();
     }
 
     function updateUrlDropdown() {
-      const select = document.getElementById('savedUrlSelect');
-      select.innerHTML = '<option value="">-- Select a saved property --</option>' +
-        savedUrls.map(item => `<option value="${item.url}">${item.name}</option>`).join('');
+      const dropdown = document.getElementById('propertyDropdown');
+      const trigger = document.querySelector('.custom-select-trigger');
 
-      // Restore last selected property
-      const lastSelected = localStorage.getItem('lastSelectedUrl');
-      if (lastSelected && savedUrls.some(s => s.url === lastSelected)) {
-        select.value = lastSelected;
-      }
-    }
-
-    function selectSavedUrl() {
-      const select = document.getElementById('savedUrlSelect');
-      // Save selection to localStorage
-      if (select.value) {
-        localStorage.setItem('lastSelectedUrl', select.value);
-      }
-    }
-
-    async function addSavedUrl() {
-      const urlInput = document.getElementById('propertyUrl');
-      const url = urlInput.value.trim();
-
-      if (!url) {
-        showStatus('Please enter an Airbnb URL', 'error');
+      if (savedUrls.length === 0) {
+        dropdown.innerHTML = '<div class="custom-select-option" style="color:#717171;cursor:default;">No saved properties yet</div>';
         return;
       }
 
-      if (!url.includes('airbnb.com')) {
-        showStatus('Please enter a valid Airbnb URL', 'error');
-        return;
-      }
+      dropdown.innerHTML = savedUrls.map(item => {
+        const platform = item.url.includes('airbnb.com') ? 'airbnb' : 'booking';
+        return `
+          <div class="custom-select-option" data-value="${item.url}" onclick="selectDropdownOption('${item.url}')">
+            <span class="platform-dot ${platform}"></span>
+            <span class="custom-select-name">${item.name}</span>
+          </div>
+        `;
+      }).join('');
+    }
 
-      // Extract room ID from URL as temporary name
-      const roomMatch = url.match(/rooms\/(\d+)/);
-      const name = roomMatch ? `Airbnb #${roomMatch[1]}` : 'New Property';
+    function toggleDropdown() {
+      const select = document.getElementById('propertySelect');
+      select.classList.toggle('open');
+    }
 
-      try {
-        const response = await fetch('/api/saved-urls', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, url })
-        });
+    function closeDropdown() {
+      const select = document.getElementById('propertySelect');
+      select.classList.remove('open');
+    }
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to save URL');
-        }
-
-        urlInput.value = '';
-        showStatus('Property added! Download to get the listing name.', 'success');
-        loadSavedUrls();
-      } catch (error) {
-        showStatus(error.message, 'error');
+    function handleDropdownKey(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleDropdown();
+      } else if (e.key === 'Escape') {
+        closeDropdown();
       }
     }
 
-    async function deleteSavedUrl(id) {
-      if (!confirm('Are you sure you want to delete this property?')) return;
+    function selectDropdownOption(url) {
+      const hiddenSelect = document.getElementById('savedUrlSelect');
+      const trigger = document.querySelector('.custom-select-trigger');
+      const urlInput = document.getElementById('scrapeUrl');
+      const deleteBtn = document.getElementById('deleteBtn');
+      const hint = document.getElementById('inputHint');
 
-      try {
-        const response = await fetch(`/api/saved-urls/${id}`, {
-          method: 'DELETE'
-        });
+      hiddenSelect.value = url;
+      urlInput.value = url;
 
-        if (!response.ok) {
-          throw new Error('Failed to delete URL');
-        }
+      const property = savedUrls.find(s => s.url === url);
+      const platform = url.includes('airbnb.com') ? 'airbnb' : 'booking';
 
-        loadSavedUrls();
-      } catch (error) {
-        showStatus(error.message, 'error');
-      }
+      trigger.innerHTML = `
+        <span class="platform-dot ${platform}"></span>
+        <span class="custom-select-name">${property?.name || 'Selected'}</span>
+      `;
+
+      // Update hint with colored dot
+      const dot = getPlatformDot(url);
+      hint.innerHTML = `${dot}Selected: "${property?.name}" - Scrape to update & aggregate new data`;
+
+      deleteBtn.disabled = false;
+      closeDropdown();
+
+      // Update selected state in dropdown
+      document.querySelectorAll('.custom-select-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.value === url);
+      });
     }
+
+    function clearDropdownSelection() {
+      const hiddenSelect = document.getElementById('savedUrlSelect');
+      const trigger = document.querySelector('.custom-select-trigger');
+
+      hiddenSelect.value = '';
+      trigger.innerHTML = '<span class="custom-select-placeholder">-- Or select from saved properties --</span>';
+
+      document.querySelectorAll('.custom-select-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const select = document.getElementById('propertySelect');
+      if (select && !select.contains(e.target)) {
+        closeDropdown();
+      }
+    });
 
     // ============================================
     // SCRAPING FUNCTIONS
     // ============================================
 
-    async function scrapeUrl() {
-      const selectEl = document.getElementById('savedUrlSelect');
-      const statusDiv = document.getElementById('status');
-      const downloadBtn = document.getElementById('downloadBtn');
-      const url = selectEl.value.trim();
+    async function smartScrape() {
+      const urlInput = document.getElementById('scrapeUrl');
+      const scrapeBtn = document.getElementById('scrapeBtn');
+      const url = urlInput.value.trim();
 
       if (!url) {
-        showStatus('Please select a property from the dropdown', 'error');
+        showStatus('Please enter a URL or select from saved properties', 'error');
         return;
       }
 
-      downloadBtn.disabled = true;
-      showStatus('<span class="spinner"></span>Downloading listing... This may take a moment.', 'loading');
+      const isAirbnb = url.includes('airbnb.com');
+      const isBooking = url.includes('booking.com');
+
+      if (!isAirbnb && !isBooking) {
+        showStatus('Please enter a valid Airbnb or Booking.com URL', 'error');
+        return;
+      }
+
+      const platform = isAirbnb ? 'Airbnb' : 'Booking.com';
+
+      // Check if URL already exists in saved properties
+      const existingProperty = savedUrls.find(s => s.url === url);
+      const isUpdate = !!existingProperty;
+
+      scrapeBtn.disabled = true;
+      scrapeBtn.textContent = 'Scraping...';
+
+      if (isUpdate) {
+        showStatus(`<span class="spinner"></span>Re-scraping "${existingProperty.name}" to aggregate new data...`, 'loading');
+      } else {
+        showStatus(`<span class="spinner"></span>Scraping new ${platform} listing...`, 'loading');
+      }
 
       try {
         const response = await fetch('/api/scrape', {
@@ -1274,44 +1444,97 @@
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to download listing');
+          throw new Error(result.error || result.details || 'Failed to scrape listing');
         }
 
         const listing = result.data || result;
         const imageCount = listing.images ? listing.images.length : 0;
+        const title = listing.title || platform + ' listing';
 
-        // Update the saved URL name with the actual listing title
-        const listingTitle = listing.title || result.title;
-        if (listingTitle) {
-          // Find saved URL - match by URL or by room ID
-          const roomIdMatch = url.match(/rooms\/(\d+)/);
-          const roomId = roomIdMatch ? roomIdMatch[1] : null;
-
-          const savedUrl = savedUrls.find(s => {
-            if (s.url === url) return true;
-            if (roomId && s.url.includes(roomId)) return true;
-            return false;
-          });
-
-          if (savedUrl && savedUrl.name.startsWith('Airbnb #')) {
-            console.log('Updating name from', savedUrl.name, 'to', listingTitle);
-            await updateSavedUrlName(savedUrl.id, listingTitle);
+        // If new property, save it to the list
+        if (!isUpdate) {
+          await savePropertyUrl(url, title);
+        } else {
+          // Update the name if it was a placeholder
+          if (existingProperty.name.startsWith('Airbnb #') || existingProperty.name.startsWith('Booking:')) {
+            await updateSavedUrlName(existingProperty.id, title);
           }
         }
 
-        showStatus(`Successfully downloaded "${listing.title || 'listing'}" with ${imageCount} images!`, 'success');
+        if (isUpdate) {
+          showStatus(`Updated "${title}" - ${imageCount} images (new data aggregated)`, 'success');
+        } else {
+          showStatus(`Saved "${title}" with ${imageCount} images!`, 'success');
+        }
 
-        // Save as last selected property
-        localStorage.setItem('lastSelectedUrl', url);
-
+        urlInput.value = '';
+        clearDropdownSelection();
+        document.getElementById('deleteBtn').disabled = true;
+        document.getElementById('inputHint').innerHTML = 'New URLs are saved automatically. Existing properties aggregate new data.';
         loadListings();
         loadSavedUrls();
       } catch (error) {
-        showStatus(error.message, 'error');
+        showStatus(`${platform} scrape failed: ` + error.message, 'error');
       } finally {
-        downloadBtn.disabled = false;
+        scrapeBtn.disabled = false;
+        scrapeBtn.textContent = 'Scrape';
       }
     }
+
+    async function savePropertyUrl(url, name) {
+      try {
+        await fetch('/api/saved-urls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, url })
+        });
+      } catch (error) {
+        console.error('Failed to save property URL:', error);
+      }
+    }
+
+    function getPlatformDot(url) {
+      if (url.includes('airbnb.com')) {
+        return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FF385C;margin-right:6px;"></span>';
+      } else if (url.includes('booking.com')) {
+        return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#003580;margin-right:6px;"></span>';
+      }
+      return '';
+    }
+
+
+    async function deleteSelectedProperty() {
+      const hiddenSelect = document.getElementById('savedUrlSelect');
+      const url = hiddenSelect.value;
+
+      if (!url) return;
+
+      const property = savedUrls.find(s => s.url === url);
+      if (!property) return;
+
+      if (!confirm(`Delete "${property.name}" from saved properties?`)) return;
+
+      try {
+        const response = await fetch(`/api/saved-urls/${property.id}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete property');
+        }
+
+        document.getElementById('scrapeUrl').value = '';
+        document.getElementById('deleteBtn').disabled = true;
+        document.getElementById('inputHint').innerHTML = 'New URLs are saved automatically. Existing properties aggregate new data.';
+        clearDropdownSelection();
+
+        showStatus(`Deleted "${property.name}" from saved properties`, 'success');
+        loadSavedUrls();
+      } catch (error) {
+        showStatus(error.message, 'error');
+      }
+    }
+
 
     async function updateSavedUrlName(id, newName) {
       try {
@@ -1425,7 +1648,7 @@
             <div class="listing-card">
               <div class="listing-images" id="images-${listing.id}">
                 ${listing.images.length > 0
-                  ? `<img src="${listing.images[0].local}" alt="${listing.title}" id="img-${listing.id}" />`
+                  ? `<img src="${listing.images[0].local}" alt="${listing.title}" id="img-${listing.id}" onclick="viewDetails('${listing.id}')" style="cursor:pointer;" />`
                   : '<div style="background:#eee;height:100%;display:flex;align-items:center;justify-content:center;color:#999;">No images</div>'
                 }
                 ${listing.images.length > 1 ? `
@@ -1462,7 +1685,7 @@
                     <span class="listing-date">Scraped: ${new Date(listing.scrapedAt).toLocaleDateString()} ${new Date(listing.scrapedAt).toLocaleTimeString()}</span>
                   </div>
                   <div class="listing-actions">
-                    <button class="btn btn-outline btn-small" onclick="viewDetails('${listing.id}')">View</button>
+                    <button class="btn btn-outline btn-small" onclick="updateListing('${listing.id}')" id="mergeBtn-${listing.id}">Merge</button>
                     <a href="/api/listings/${listing.id}/zip" class="btn btn-outline btn-small" download>Download</a>
                     <button class="btn btn-outline btn-small" onclick="updateListing('${listing.id}')" id="updateBtn-${listing.id}">Update</button>
                     <button class="btn btn-outline btn-small btn-danger" onclick="deleteListing('${listing.id}')">Delete</button>
@@ -1569,9 +1792,40 @@
       if (e.key === 'Escape') closeModal();
     });
 
-    // Allow Enter key to submit when adding URL
-    document.getElementById('propertyUrl').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addSavedUrl();
+    // Allow Enter key for scraping
+    document.getElementById('scrapeUrl').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') smartScrape();
+    });
+
+    // Update hint when typing in the URL field
+    document.getElementById('scrapeUrl').addEventListener('input', (e) => {
+      const url = e.target.value.trim();
+      const hint = document.getElementById('inputHint');
+      const deleteBtn = document.getElementById('deleteBtn');
+
+      if (!url) {
+        hint.innerHTML = 'New URLs are saved automatically. Existing properties aggregate new data.';
+        clearDropdownSelection();
+        deleteBtn.disabled = true;
+        return;
+      }
+
+      const dot = getPlatformDot(url);
+      const existing = savedUrls.find(s => s.url === url);
+      if (existing) {
+        hint.innerHTML = `${dot}Found: "${existing.name}" - Scrape to update & aggregate new data`;
+        // Update dropdown to show selected
+        selectDropdownOption(existing.url);
+        deleteBtn.disabled = false;
+      } else if (url.includes('airbnb.com') || url.includes('booking.com')) {
+        hint.innerHTML = `${dot}New property - will be saved after scraping`;
+        clearDropdownSelection();
+        deleteBtn.disabled = true;
+      } else {
+        hint.innerHTML = 'Enter a valid Airbnb or Booking.com URL';
+        clearDropdownSelection();
+        deleteBtn.disabled = true;
+      }
     });
 
     // ============================================
