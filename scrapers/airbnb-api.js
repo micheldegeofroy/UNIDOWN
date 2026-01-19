@@ -358,6 +358,35 @@ function parseRoomDetails(html, roomUrl) {
       data.amenities = [...amenitySet];
     }
 
+    // Extract property details (bedrooms, beds, bathrooms, guests)
+    const bedroomMatch = html.match(/"title":"(\d+)\s*bedroom/i);
+    if (bedroomMatch) {
+      data.bedrooms = parseInt(bedroomMatch[1]);
+    }
+
+    const bedsMatch = html.match(/"title":"(\d+)\s*bed[^r]/i);
+    if (bedsMatch) {
+      data.beds = parseInt(bedsMatch[1]);
+    }
+
+    const bathMatch = html.match(/(\d+)\s*bath/i);
+    if (bathMatch) {
+      data.bathrooms = parseInt(bathMatch[1]);
+    }
+
+    const guestsMatch = html.match(/"title":"(\d+)\s*guest/i);
+    if (guestsMatch) {
+      data.maxGuests = parseInt(guestsMatch[1]);
+    }
+
+    // Also try personCapacity
+    if (data.maxGuests === 0) {
+      const capacityMatch = html.match(/"personCapacity":(\d+)/);
+      if (capacityMatch) {
+        data.maxGuests = parseInt(capacityMatch[1]);
+      }
+    }
+
   } catch (error) {
     console.error('Error parsing room details:', error.message);
   }
