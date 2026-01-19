@@ -12,130 +12,210 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #fff;
       min-height: 100vh;
-      padding: 20px;
+      color: #222;
+    }
+
+    /* Airbnb Header */
+    .navbar {
+      background: #fff;
+      border-bottom: 1px solid #EBEBEB;
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      color: #FF385C;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo svg {
+      width: 32px;
+      height: 32px;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 0 auto;
+      padding: 24px;
     }
 
     header {
       text-align: center;
-      color: white;
-      margin-bottom: 30px;
+      color: #222;
+      margin-bottom: 32px;
+      padding: 40px 0;
     }
 
     header h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #222;
     }
 
     header p {
-      opacity: 0.9;
-      font-size: 1.1rem;
+      color: #717171;
+      font-size: 1rem;
     }
 
     .card {
       background: white;
       border-radius: 12px;
-      padding: 30px;
-      margin-bottom: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #EBEBEB;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
 
-    .input-group {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .input-group input {
-      flex: 1;
-      padding: 15px 20px;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 1rem;
-      transition: border-color 0.3s;
-    }
-
-    .input-group input:focus {
-      outline: none;
-      border-color: #667eea;
-    }
-
+    /* Airbnb Button System */
     .btn {
-      padding: 15px 30px;
+      height: 36px;
+      padding: 0 16px;
       border: none;
       border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: all 0.3s;
+      font-size: 13px;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%);
       color: white;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(255,56,92,0.4);
     }
 
     .btn-primary:disabled {
       opacity: 0.6;
       cursor: not-allowed;
       transform: none;
+      box-shadow: none;
     }
 
-    .supported-platforms {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      margin-bottom: 20px;
+    .btn-secondary {
+      background: #222;
+      color: white;
     }
 
-    .platform {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      background: #f5f5f5;
-      border-radius: 20px;
-      font-size: 0.9rem;
+    .btn-secondary:hover {
+      background: #000;
     }
 
-    .platform.airbnb { color: #FF5A5F; }
+    .btn-outline {
+      background: white;
+      border: 1px solid #222;
+      color: #222;
+    }
 
-    /* Tor Controls */
-    .tor-controls {
-      background: #f8f9fa;
+    .btn-outline:hover {
+      background: #F7F7F7;
+    }
+
+    .btn-small {
+      height: 36px;
+      padding: 0 16px;
+      font-size: 13px;
       border-radius: 8px;
-      padding: 15px 20px;
-      margin-bottom: 20px;
+    }
+
+    .btn-danger {
+      border-color: #C13515;
+      color: #C13515;
+    }
+
+    .btn-danger:hover {
+      background: #C13515;
+      color: white;
+    }
+
+    /* Airbnb Input System */
+    input[type="text"],
+    input[type="url"],
+    select {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid #B0B0B0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23222222' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+    }
+
+    input[type="text"]:focus,
+    input[type="url"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #222;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+    }
+
+    input::placeholder {
+      color: #717171;
+    }
+
+    /* Tor Controls - Airbnb style */
+    .tor-controls {
+      background: #F7F7F7;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 16px;
       flex-wrap: wrap;
     }
 
     .tor-toggle {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .tor-toggle label {
       font-weight: 600;
-      color: #333;
+      color: #222;
       display: flex;
       align-items: center;
       gap: 8px;
+      font-size: 14px;
     }
 
     .tor-toggle .tor-icon {
@@ -146,8 +226,8 @@
     .switch {
       position: relative;
       display: inline-block;
-      width: 50px;
-      height: 26px;
+      width: 48px;
+      height: 28px;
     }
 
     .switch input {
@@ -163,55 +243,59 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #ccc;
-      transition: 0.4s;
-      border-radius: 26px;
+      background-color: #B0B0B0;
+      transition: 0.3s;
+      border-radius: 28px;
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 20px;
-      width: 20px;
+      height: 22px;
+      width: 22px;
       left: 3px;
       bottom: 3px;
       background-color: white;
-      transition: 0.4s;
+      transition: 0.3s;
       border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
 
     input:checked + .slider {
-      background-color: #7d4698;
+      background-color: #FF385C;
     }
 
     input:checked + .slider:before {
-      transform: translateX(24px);
+      transform: translateX(20px);
     }
 
     .tor-status {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 15px;
+      padding: 8px 16px;
       background: white;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      border: 1px solid #e0e0e0;
+      border-radius: 24px;
+      font-size: 14px;
+      border: 1px solid #EBEBEB;
     }
 
     .tor-status.connected {
-      border-color: #4caf50;
-      color: #2e7d32;
+      border-color: #008A05;
+      color: #008A05;
+      background: #F0FFF0;
     }
 
     .tor-status.disconnected {
-      border-color: #f44336;
-      color: #c62828;
+      border-color: #C13515;
+      color: #C13515;
+      background: #FFF8F6;
     }
 
     .tor-status.blocked {
-      border-color: #ff9800;
-      color: #e65100;
+      border-color: #E07912;
+      color: #E07912;
+      background: #FFFAF0;
     }
 
     .tor-status-dot {
@@ -223,135 +307,134 @@
 
     .tor-buttons {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       margin-left: auto;
     }
 
     .btn-tor {
-      padding: 8px 15px;
-      font-size: 0.85rem;
-      border-radius: 6px;
-      background: #7d4698;
+      height: 36px;
+      width: 100px;
+      padding: 0;
+      font-size: 13px;
+      border-radius: 8px;
+      background: #222;
       color: white;
       border: none;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.2s;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .btn-tor:hover {
-      background: #5c3472;
+      background: #000;
     }
 
     .btn-tor:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
     }
 
     .btn-tor-outline {
-      background: transparent;
-      border: 1px solid #7d4698;
-      color: #7d4698;
+      background: white;
+      border: 1px solid #222;
+      color: #222;
     }
 
     .btn-tor-outline:hover {
-      background: #7d4698;
-      color: white;
+      background: #F7F7F7;
     }
 
-    .tor-info {
-      font-size: 0.8rem;
-      color: #666;
-      width: 100%;
-      margin-top: 5px;
-    }
 
-    /* Saved URLs */
+    /* Saved URLs - Airbnb style */
     .saved-urls-section {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .saved-urls-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
 
     .saved-urls-header h3 {
-      font-size: 1rem;
-      color: #333;
+      font-size: 18px;
+      font-weight: 600;
+      color: #222;
       margin: 0;
+    }
+
+    .input-frame {
+      background: #F7F7F7;
+      border: 1px solid #EBEBEB;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
     }
 
     .add-url-form {
       display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
     }
 
     .add-url-form input {
       flex: 1;
-      min-width: 150px;
-      padding: 10px 15px;
-      border: 2px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    .add-url-form input:focus {
-      outline: none;
-      border-color: #667eea;
+      min-width: 200px;
     }
 
     .add-url-form .btn-add {
-      padding: 10px 20px;
-      background: #4caf50;
+      height: 36px;
+      width: 100px;
+      padding: 0;
+      background: #222;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
+      font-size: 13px;
       font-weight: 600;
+      transition: all 0.2s;
     }
 
     .add-url-form .btn-add:hover {
-      background: #43a047;
+      background: #000;
     }
 
     .url-select-group {
       display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 12px;
+      margin-bottom: 0;
     }
 
     .url-select-group select {
       flex: 1;
-      padding: 12px 15px;
-      border: 2px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      background: white;
       cursor: pointer;
     }
 
-    .url-select-group select:focus {
-      outline: none;
-      border-color: #667eea;
+    .url-select-group .btn {
+      width: 100px;
+      padding: 0;
     }
 
     .saved-urls-list {
-      max-height: 200px;
+      max-height: 240px;
       overflow-y: auto;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
+      border: 1px solid #EBEBEB;
+      border-radius: 12px;
     }
 
     .saved-url-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 15px;
-      border-bottom: 1px solid #eee;
+      padding: 16px;
+      border-bottom: 1px solid #EBEBEB;
+      transition: background 0.2s;
+      cursor: pointer;
     }
 
     .saved-url-item:last-child {
@@ -359,7 +442,7 @@
     }
 
     .saved-url-item:hover {
-      background: #f9f9f9;
+      background: #F7F7F7;
     }
 
     .saved-url-info {
@@ -369,13 +452,13 @@
 
     .saved-url-name {
       font-weight: 600;
-      color: #333;
+      color: #222;
       margin-bottom: 4px;
     }
 
     .saved-url-link {
-      font-size: 0.8rem;
-      color: #666;
+      font-size: 13px;
+      color: #717171;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -383,64 +466,76 @@
     }
 
     .btn-delete-url {
-      padding: 6px 12px;
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 4px;
+      height: 36px;
+      width: 100px;
+      padding: 0;
+      background: white;
+      color: #C13515;
+      border: 1px solid #C13515;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.8rem;
-      margin-left: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 12px;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .btn-delete-url:hover {
-      background: #d32f2f;
+      background: #C13515;
+      color: white;
     }
 
     .no-saved-urls {
-      padding: 20px;
+      padding: 32px;
       text-align: center;
-      color: #999;
-      font-size: 0.9rem;
+      color: #717171;
+      font-size: 15px;
     }
 
     .helper-text {
-      font-size: 0.8rem;
-      color: #888;
-      margin-bottom: 15px;
-      padding-left: 5px;
+      font-size: 13px;
+      color: #717171;
+      margin-bottom: 16px;
+      padding-left: 4px;
     }
 
     .status {
-      padding: 15px;
-      border-radius: 8px;
+      padding: 16px;
+      border-radius: 12px;
       margin-bottom: 20px;
       display: none;
+      font-size: 15px;
     }
 
     .status.loading {
       display: block;
-      background: #e3f2fd;
-      color: #1565c0;
+      background: #FFF0F3;
+      color: #E31C5F;
+      border: 1px solid #FFD1DC;
     }
 
     .status.error {
       display: block;
-      background: #ffebee;
-      color: #c62828;
+      background: #FFF0F3;
+      color: #D70466;
+      border: 1px solid #D70466;
     }
 
     .status.success {
       display: block;
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #FFF0F3;
+      color: #E31C5F;
+      border: 1px solid #FF385C;
     }
 
     .spinner {
       display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #1565c0;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #FF385C;
       border-radius: 50%;
       border-top-color: transparent;
       animation: spin 1s linear infinite;
@@ -456,151 +551,280 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .listings-header h2 {
-      color: #333;
+      color: #222;
+      font-size: 22px;
+      font-weight: 600;
     }
 
     .listing-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .listing-grid > * {
+      height: 100%;
     }
 
     .listing-card {
-      border: 1px solid #e0e0e0;
       border-radius: 12px;
       overflow: hidden;
-      transition: transform 0.3s, box-shadow 0.3s;
+      transition: transform 0.2s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .listing-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      transform: scale(1.02);
     }
 
     .listing-images {
       height: 200px;
       overflow: hidden;
       position: relative;
+      border-radius: 12px;
     }
 
     .listing-images img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: opacity 0.2s;
     }
 
     .image-count {
       position: absolute;
-      bottom: 10px;
-      right: 10px;
+      bottom: 12px;
+      right: 12px;
       background: rgba(0,0,0,0.7);
       color: white;
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .image-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      background: white;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+      z-index: 10;
+    }
+
+    .listing-images:hover .image-nav {
+      opacity: 1;
+    }
+
+    .image-nav:hover {
+      transform: translateY(-50%) scale(1.05);
+    }
+
+    .image-nav:disabled {
+      opacity: 0 !important;
+      cursor: default;
+    }
+
+    .image-nav-left {
+      left: 10px;
+    }
+
+    .image-nav-right {
+      right: 10px;
+    }
+
+    .image-nav svg {
+      width: 12px;
+      height: 12px;
+      fill: none;
+      stroke: #222;
+      stroke-width: 2.5;
+    }
+
+    .image-dots {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+    }
+
+    .image-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.6);
+      transition: background 0.2s;
+    }
+
+    .image-dot.active {
+      background: white;
     }
 
     .listing-content {
-      padding: 20px;
+      padding: 12px 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .listing-description {
+      flex: 1;
     }
 
     .listing-platform {
       display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
+      align-self: flex-start;
     }
 
     .listing-platform.airbnb {
-      background: #ffebee;
-      color: #FF5A5F;
+      background: #FFF0F1;
+      color: #FF385C;
     }
 
     .listing-title {
-      font-size: 1.1rem;
+      font-size: 15px;
       font-weight: 600;
-      color: #333;
-      margin-bottom: 8px;
+      color: #222;
+      margin-bottom: 4px;
       line-height: 1.4;
     }
 
+    .listing-url {
+      font-size: 12px;
+      color: #717171;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .listing-url:hover {
+      color: #FF385C;
+      text-decoration: underline;
+    }
+
     .listing-description {
-      font-size: 0.9rem;
-      color: #666;
+      font-size: 14px;
+      color: #717171;
       line-height: 1.5;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
+      -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
-    .listing-meta {
+    .listing-host {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding-top: 15px;
-      border-top: 1px solid #eee;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 10px 0;
+      border-top: 1px solid #EBEBEB;
+    }
+
+    .host-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #EBEBEB;
+    }
+
+    .host-info {
+      flex: 1;
+    }
+
+    .host-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #222;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .listing-bottom {
+      margin-top: auto;
+    }
+
+    .listing-meta {
+      background: #F7F7F7;
+      border: 1px solid #EBEBEB;
+      border-radius: 8px;
+      padding: 10px 12px;
     }
 
     .listing-date {
-      font-size: 0.85rem;
-      color: #999;
+      font-size: 13px;
+      color: #717171;
     }
 
     .listing-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
+      margin-top: 12px;
     }
 
-    .btn-small {
-      padding: 8px 15px;
-      font-size: 0.85rem;
-      border-radius: 6px;
+    .listing-actions .btn {
+      flex: 1;
+      height: 36px;
+      padding: 0;
+      font-size: 13px;
     }
 
-    .btn-outline {
-      background: transparent;
-      border: 1px solid #667eea;
-      color: #667eea;
-    }
-
-    .btn-outline:hover {
-      background: #667eea;
-      color: white;
-    }
-
-    .btn-danger {
-      border-color: #f44336;
-      color: #f44336;
-    }
-
-    .btn-danger:hover {
-      background: #f44336;
-      color: white;
+    .listing-actions a.btn {
+      text-decoration: none;
     }
 
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
-      color: #999;
+      padding: 80px 20px;
+      color: #717171;
     }
 
     .empty-state svg {
-      width: 80px;
-      height: 80px;
-      margin-bottom: 20px;
-      opacity: 0.5;
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      stroke: #B0B0B0;
     }
 
-    /* Modal styles */
+    .empty-state p {
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* Modal styles - Airbnb style */
     .modal {
       display: none;
       position: fixed;
@@ -608,7 +832,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.6);
       z-index: 1000;
       overflow-y: auto;
     }
@@ -617,7 +841,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 20px;
+      padding: 40px 20px;
     }
 
     .modal-content {
@@ -625,68 +849,112 @@
       border-radius: 12px;
       max-width: 900px;
       width: 100%;
-      margin: 20px auto;
+      margin: 0 auto;
       overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.28);
     }
 
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px;
-      border-bottom: 1px solid #eee;
+      padding: 24px;
+      border-bottom: 1px solid #EBEBEB;
+    }
+
+    .modal-header h2 {
+      font-size: 18px;
+      font-weight: 600;
     }
 
     .modal-close {
       background: none;
       border: none;
-      font-size: 1.5rem;
+      font-size: 24px;
       cursor: pointer;
-      color: #999;
+      color: #222;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .modal-close:hover {
+      background: #F7F7F7;
     }
 
     .modal-body {
-      padding: 20px;
+      padding: 24px;
       max-height: 70vh;
       overflow-y: auto;
     }
 
     .gallery {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 10px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+      margin-bottom: 24px;
     }
 
     .gallery img {
       width: 100%;
-      height: 150px;
+      height: 140px;
       object-fit: cover;
       border-radius: 8px;
       cursor: pointer;
-      transition: transform 0.3s;
+      transition: opacity 0.2s;
     }
 
     .gallery img:hover {
-      transform: scale(1.05);
+      opacity: 0.9;
     }
 
     .detail-section {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #EBEBEB;
+    }
+
+    .detail-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
     }
 
     .detail-section h3 {
-      color: #333;
-      margin-bottom: 10px;
-      font-size: 1rem;
+      color: #222;
+      margin-bottom: 8px;
+      font-size: 16px;
+      font-weight: 600;
     }
 
     .detail-section p {
-      color: #666;
+      color: #717171;
       line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .detail-section a {
+      color: #222;
+      text-decoration: underline;
+    }
+
+    .detail-section a:hover {
+      color: #FF385C;
     }
 
     @media (max-width: 768px) {
+      .navbar-content {
+        padding: 0 16px;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
       .input-group {
         flex-direction: column;
       }
@@ -695,29 +963,69 @@
         grid-template-columns: 1fr;
       }
 
-      .supported-platforms {
+      .tor-controls {
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
+      }
+
+      .tor-buttons {
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .add-url-form {
+        flex-direction: column;
+      }
+
+      .url-select-group {
+        flex-direction: column;
       }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>UNIDOWN</h1>
-      <p>Download your property photos and descriptions from rental platforms</p>
-    </header>
+  <!-- Airbnb-style Navbar -->
+  <nav class="navbar">
+    <div class="navbar-content">
+      <a href="/" class="logo">
+        <svg viewBox="0 0 32 32" fill="currentColor">
+          <path d="M16 1c2.008 0 3.463.963 4.751 3.269l.533 1.025c1.954 3.83 6.114 12.54 7.1 14.836l.145.353c.667 1.591.91 2.472.96 3.396l.01.415.001.228c0 4.062-2.877 6.478-6.357 6.478-2.224 0-4.556-1.258-6.709-3.386l-.257-.26-.172-.179h-.212l-.257.26c-2.118 2.098-4.413 3.345-6.597 3.386l-.225.002c-3.48 0-6.357-2.416-6.357-6.478 0-1.665.42-3.011 1.116-4.395l.366-.723c.987-2.296 5.147-11.005 7.1-14.836l.533-1.025C12.537 1.963 13.992 1 16 1zm0 2c-1.239 0-2.053.539-2.987 2.21l-.523 1.008c-1.926 3.776-6.06 12.43-7.031 14.692l-.345.836c-.427 1.071-.573 1.655-.605 2.24l-.009.33v.206c0 2.564 1.724 4.478 4.357 4.478 1.603 0 3.402-.982 5.129-2.663l.475-.467.249-.256.392-.421h1.896l.392.421.249.256.475.467c1.727 1.681 3.526 2.663 5.129 2.663 2.633 0 4.357-1.914 4.357-4.478v-.206l-.004-.166c-.024-.68-.166-1.312-.601-2.395l-.35-.845c-.971-2.262-5.105-10.916-7.031-14.692l-.523-1.008C18.053 3.539 17.239 3 16 3z"/>
+        </svg>
+        UNIDOWN
+      </a>
+    </div>
+  </nav>
 
+  <div class="container">
     <div class="card">
-      <div class="supported-platforms">
-        <div class="platform airbnb">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 17.08c-.248.64-.693 1.136-1.28 1.44-.586.304-1.253.36-1.866.16-.614-.2-1.147-.6-1.52-1.12-.373-.52-.56-1.147-.56-1.787 0-.64.187-1.267.56-1.787.373-.52.906-.92 1.52-1.12.613-.2 1.28-.144 1.866.16.587.304 1.032.8 1.28 1.44.248.64.248 1.36 0 2z"/>
-          </svg>
-          Airbnb
+      <!-- Saved URLs Section -->
+      <div class="saved-urls-section">
+        <div class="saved-urls-header">
+          <h3>Saved Properties</h3>
+        </div>
+
+        <div class="input-frame">
+          <div class="add-url-form">
+            <input type="url" id="propertyUrl" placeholder="https://www.airbnb.com/rooms/43574420" />
+            <button class="btn-add" onclick="addSavedUrl()">Add</button>
+          </div>
+
+          <div class="url-select-group">
+            <select id="savedUrlSelect" onchange="selectSavedUrl()">
+              <option value="">-- Select a saved property --</option>
+            </select>
+            <button class="btn btn-primary" id="downloadBtn" onclick="scrapeUrl()">
+              Scrape
+            </button>
+          </div>
+        </div>
+
+        <div id="savedUrlsList" class="saved-urls-list">
+          <div class="no-saved-urls">No saved properties yet. Add one above.</div>
         </div>
       </div>
+
+      <div id="status" class="status"></div>
 
       <!-- Tor Controls -->
       <div class="tor-controls">
@@ -740,49 +1048,15 @@
         </div>
 
         <div class="tor-buttons">
-          <button class="btn-tor btn-tor-outline" id="torTestBtn" onclick="testTor()">Test Connection</button>
+          <button class="btn-tor btn-tor-outline" id="torTestBtn" onclick="testTor()">Test</button>
           <button class="btn-tor" id="torNewIpBtn" onclick="getNewTorIp()" disabled>New IP</button>
         </div>
-
-        <div class="tor-info" id="torInfo">
-          Enable Tor to route traffic through different IPs and avoid blocking.
-        </div>
       </div>
-
-      <!-- Saved URLs Section -->
-      <div class="saved-urls-section">
-        <div class="saved-urls-header">
-          <h3>Saved Properties</h3>
-        </div>
-
-        <div class="add-url-form">
-          <input type="text" id="propertyName" placeholder="Property name (e.g. Can Toni Platera)" />
-          <input type="url" id="propertyUrl" placeholder="Airbnb URL (e.g. https://www.airbnb.com/rooms/8492758)" />
-          <button class="btn-add" onclick="addSavedUrl()">Add</button>
-        </div>
-        <div class="helper-text">Paste the direct Airbnb listing URL for best results</div>
-
-        <div class="url-select-group">
-          <select id="savedUrlSelect" onchange="selectSavedUrl()">
-            <option value="">-- Select a saved property --</option>
-          </select>
-          <button class="btn btn-primary" id="downloadBtn" onclick="scrapeUrl()">
-            Download
-          </button>
-        </div>
-
-        <div id="savedUrlsList" class="saved-urls-list">
-          <div class="no-saved-urls">No saved properties yet. Add one above.</div>
-        </div>
-      </div>
-
-      <div id="status" class="status"></div>
     </div>
 
     <div class="card">
       <div class="listings-header">
         <h2>Scraped Results</h2>
-        <button class="btn btn-outline btn-small" onclick="loadListings()">Refresh</button>
       </div>
 
       <div id="listingsContainer">
@@ -811,6 +1085,49 @@
   <script>
     let currentListings = [];
     let savedUrls = [];
+    let imageIndexes = {}; // Track current image index for each listing
+
+    function navigateImage(listingId, direction) {
+      const listing = currentListings.find(l => l.id === listingId);
+      if (!listing || listing.images.length <= 1) return;
+
+      // Initialize index if not set
+      if (imageIndexes[listingId] === undefined) {
+        imageIndexes[listingId] = 0;
+      }
+
+      // Calculate new index
+      let newIndex = imageIndexes[listingId] + direction;
+      if (newIndex < 0) newIndex = 0;
+      if (newIndex >= listing.images.length) newIndex = listing.images.length - 1;
+
+      imageIndexes[listingId] = newIndex;
+
+      // Update image
+      const img = document.getElementById(`img-${listingId}`);
+      if (img) {
+        img.src = listing.images[newIndex].local;
+      }
+
+      // Update dots (show max 5 dots centered around current)
+      const maxDots = 5;
+      const totalImages = listing.images.length;
+      for (let i = 0; i < Math.min(maxDots, totalImages); i++) {
+        const dot = document.getElementById(`dot-${listingId}-${i}`);
+        if (dot) {
+          dot.classList.toggle('active', i === Math.min(newIndex, maxDots - 1));
+        }
+      }
+
+      // Update navigation button states
+      const container = document.getElementById(`images-${listingId}`);
+      if (container) {
+        const leftBtn = container.querySelector('.image-nav-left');
+        const rightBtn = container.querySelector('.image-nav-right');
+        if (leftBtn) leftBtn.disabled = newIndex === 0;
+        if (rightBtn) rightBtn.disabled = newIndex === listing.images.length - 1;
+      }
+    }
 
     // ============================================
     // SAVED URLS FUNCTIONS
@@ -836,35 +1153,48 @@
       }
 
       container.innerHTML = savedUrls.map(item => `
-        <div class="saved-url-item">
+        <div class="saved-url-item" onclick="selectPropertyFromList('${item.url}')">
           <div class="saved-url-info">
             <div class="saved-url-name">${item.name}</div>
             <span class="saved-url-link">${item.url}</span>
           </div>
-          <button class="btn-delete-url" onclick="deleteSavedUrl('${item.id}')">Delete</button>
+          <button class="btn-delete-url" onclick="event.stopPropagation(); deleteSavedUrl('${item.id}')">Delete</button>
         </div>
       `).join('');
+    }
+
+    function selectPropertyFromList(url) {
+      const select = document.getElementById('savedUrlSelect');
+      select.value = url;
+      localStorage.setItem('lastSelectedUrl', url);
     }
 
     function updateUrlDropdown() {
       const select = document.getElementById('savedUrlSelect');
       select.innerHTML = '<option value="">-- Select a saved property --</option>' +
         savedUrls.map(item => `<option value="${item.url}">${item.name}</option>`).join('');
+
+      // Restore last selected property
+      const lastSelected = localStorage.getItem('lastSelectedUrl');
+      if (lastSelected && savedUrls.some(s => s.url === lastSelected)) {
+        select.value = lastSelected;
+      }
     }
 
     function selectSavedUrl() {
       const select = document.getElementById('savedUrlSelect');
-      // URL is stored in the select value, ready for scraping
+      // Save selection to localStorage
+      if (select.value) {
+        localStorage.setItem('lastSelectedUrl', select.value);
+      }
     }
 
     async function addSavedUrl() {
-      const nameInput = document.getElementById('propertyName');
       const urlInput = document.getElementById('propertyUrl');
-      const name = nameInput.value.trim();
       const url = urlInput.value.trim();
 
-      if (!name || !url) {
-        showStatus('Please enter both a name and URL', 'error');
+      if (!url) {
+        showStatus('Please enter an Airbnb URL', 'error');
         return;
       }
 
@@ -872,6 +1202,10 @@
         showStatus('Please enter a valid Airbnb URL', 'error');
         return;
       }
+
+      // Extract room ID from URL as temporary name
+      const roomMatch = url.match(/rooms\/(\d+)/);
+      const name = roomMatch ? `Airbnb #${roomMatch[1]}` : 'New Property';
 
       try {
         const response = await fetch('/api/saved-urls', {
@@ -886,9 +1220,8 @@
           throw new Error(data.error || 'Failed to save URL');
         }
 
-        nameInput.value = '';
         urlInput.value = '';
-        showStatus(`Property "${name}" saved successfully!`, 'success');
+        showStatus('Property added! Download to get the listing name.', 'success');
         loadSavedUrls();
       } catch (error) {
         showStatus(error.message, 'error');
@@ -946,13 +1279,57 @@
 
         const listing = result.data || result;
         const imageCount = listing.images ? listing.images.length : 0;
+
+        // Update the saved URL name with the actual listing title
+        const listingTitle = listing.title || result.title;
+        if (listingTitle) {
+          // Find saved URL - match by URL or by room ID
+          const roomIdMatch = url.match(/rooms\/(\d+)/);
+          const roomId = roomIdMatch ? roomIdMatch[1] : null;
+
+          const savedUrl = savedUrls.find(s => {
+            if (s.url === url) return true;
+            if (roomId && s.url.includes(roomId)) return true;
+            return false;
+          });
+
+          if (savedUrl && savedUrl.name.startsWith('Airbnb #')) {
+            console.log('Updating name from', savedUrl.name, 'to', listingTitle);
+            await updateSavedUrlName(savedUrl.id, listingTitle);
+          }
+        }
+
         showStatus(`Successfully downloaded "${listing.title || 'listing'}" with ${imageCount} images!`, 'success');
-        selectEl.value = '';
+
+        // Save as last selected property
+        localStorage.setItem('lastSelectedUrl', url);
+
         loadListings();
+        loadSavedUrls();
       } catch (error) {
         showStatus(error.message, 'error');
       } finally {
         downloadBtn.disabled = false;
+      }
+    }
+
+    async function updateSavedUrlName(id, newName) {
+      try {
+        console.log('Updating saved URL:', id, 'to name:', newName);
+        const response = await fetch(`/api/saved-urls/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName })
+        });
+        const result = await response.json();
+        console.log('Update response:', result);
+        if (!response.ok) {
+          console.error('Update failed:', result.error);
+        }
+        return result.success;
+      } catch (error) {
+        console.error('Failed to update property name:', error);
+        return false;
       }
     }
 
@@ -991,6 +1368,42 @@
       }
     }
 
+    async function updateListing(id) {
+      const listing = currentListings.find(l => l.id === id);
+      if (!listing) return;
+
+      const updateBtn = document.getElementById(`updateBtn-${id}`);
+      if (updateBtn) {
+        updateBtn.disabled = true;
+        updateBtn.textContent = 'Updating...';
+      }
+
+      showStatus(`<span class="spinner"></span>Updating "${listing.title}"...`, 'loading');
+
+      try {
+        const response = await fetch(`/api/listings/${id}/update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to update listing');
+        }
+
+        showStatus(`Successfully updated "${listing.title}"! ${result.newImages || 0} new images added.`, 'success');
+        loadListings();
+      } catch (error) {
+        showStatus(error.message, 'error');
+      } finally {
+        if (updateBtn) {
+          updateBtn.disabled = false;
+          updateBtn.textContent = 'Update';
+        }
+      }
+    }
+
     function renderListings() {
       const container = document.getElementById('listingsContainer');
 
@@ -1010,22 +1423,48 @@
         <div class="listing-grid">
           ${currentListings.map(listing => `
             <div class="listing-card">
-              <div class="listing-images">
+              <div class="listing-images" id="images-${listing.id}">
                 ${listing.images.length > 0
-                  ? `<img src="${listing.images[0].local}" alt="${listing.title}" />`
+                  ? `<img src="${listing.images[0].local}" alt="${listing.title}" id="img-${listing.id}" />`
                   : '<div style="background:#eee;height:100%;display:flex;align-items:center;justify-content:center;color:#999;">No images</div>'
                 }
+                ${listing.images.length > 1 ? `
+                  <button class="image-nav image-nav-left" onclick="event.stopPropagation(); navigateImage('${listing.id}', -1)" ${0 === 0 ? 'disabled' : ''}>
+                    <svg viewBox="0 0 16 16"><path d="M10 12L6 8l4-4"/></svg>
+                  </button>
+                  <button class="image-nav image-nav-right" onclick="event.stopPropagation(); navigateImage('${listing.id}', 1)">
+                    <svg viewBox="0 0 16 16"><path d="M6 12l4-4-4-4"/></svg>
+                  </button>
+                  <div class="image-dots">
+                    ${listing.images.slice(0, 5).map((_, i) => `<span class="image-dot ${i === 0 ? 'active' : ''}" id="dot-${listing.id}-${i}"></span>`).join('')}
+                  </div>
+                ` : ''}
                 ${listing.images.length > 0 ? `<span class="image-count">${listing.images.length} photos</span>` : ''}
               </div>
               <div class="listing-content">
                 <span class="listing-platform ${listing.platform}">${listing.platform}</span>
                 <h3 class="listing-title">${listing.title || 'Untitled Listing'}</h3>
+                <a href="${listing.sourceUrl}" target="_blank" class="listing-url">${listing.sourceUrl}</a>
                 <p class="listing-description">${listing.description || 'No description available'}</p>
-                <div class="listing-meta">
-                  <span class="listing-date">${new Date(listing.scrapedAt).toLocaleDateString()}</span>
+                ${listing.host && listing.host.name ? `
+                  <div class="listing-host">
+                    ${listing.host.avatarLocal || listing.host.profilePicture
+                      ? `<img src="${listing.host.avatarLocal || listing.host.profilePicture}" alt="${listing.host.name}" class="host-avatar" />`
+                      : `<div class="host-avatar" style="background:#EBEBEB;display:flex;align-items:center;justify-content:center;color:#717171;font-size:16px;">${listing.host.name.charAt(0)}</div>`
+                    }
+                    <div class="host-info">
+                      <div class="host-name">Hosted by ${listing.host.name}</div>
+                    </div>
+                  </div>
+                ` : ''}
+                <div class="listing-bottom">
+                  <div class="listing-meta">
+                    <span class="listing-date">Scraped: ${new Date(listing.scrapedAt).toLocaleDateString()} ${new Date(listing.scrapedAt).toLocaleTimeString()}</span>
+                  </div>
                   <div class="listing-actions">
                     <button class="btn btn-outline btn-small" onclick="viewDetails('${listing.id}')">View</button>
-                    <a href="/downloads/${listing.folder}" target="_blank" class="btn btn-outline btn-small">Open Folder</a>
+                    <a href="/api/listings/${listing.id}/zip" class="btn btn-outline btn-small" download>Download</a>
+                    <button class="btn btn-outline btn-small" onclick="updateListing('${listing.id}')" id="updateBtn-${listing.id}">Update</button>
                     <button class="btn btn-outline btn-small btn-danger" onclick="deleteListing('${listing.id}')">Delete</button>
                   </div>
                 </div>
@@ -1054,6 +1493,21 @@
           `).join('')}
         </div>
 
+        ${listing.host && listing.host.name ? `
+          <div class="detail-section">
+            <h3>Host</h3>
+            <div style="display:flex;align-items:center;gap:12px;">
+              ${listing.host.avatarLocal || listing.host.profilePicture
+                ? `<img src="${listing.host.avatarLocal || listing.host.profilePicture}" alt="${listing.host.name}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #EBEBEB;" />`
+                : `<div style="width:56px;height:56px;border-radius:50%;background:#EBEBEB;display:flex;align-items:center;justify-content:center;color:#717171;font-size:20px;">${listing.host.name.charAt(0)}</div>`
+              }
+              <div>
+                <p style="font-weight:600;color:#222;">${listing.host.name}</p>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
         ${listing.description ? `
           <div class="detail-section">
             <h3>Description</h3>
@@ -1064,7 +1518,13 @@
         ${listing.location ? `
           <div class="detail-section">
             <h3>Location</h3>
-            <p>${listing.location}</p>
+            <p>${[listing.location.city, listing.location.state, listing.location.country].filter(Boolean).join(', ') || 'Not specified'}</p>
+            ${listing.location.lat && listing.location.lng ? `
+              <p style="color:#717171;font-size:13px;margin-top:8px;">
+                GPS: ${listing.location.lat}, ${listing.location.lng}
+                <a href="https://www.google.com/maps?q=${listing.location.lat},${listing.location.lng}" target="_blank" style="margin-left:8px;color:#FF385C;">View on Map</a>
+              </p>
+            ` : ''}
           </div>
         ` : ''}
 
@@ -1127,7 +1587,6 @@
         const statusDiv = document.getElementById('torStatus');
         const statusText = document.getElementById('torStatusText');
         const newIpBtn = document.getElementById('torNewIpBtn');
-        const infoDiv = document.getElementById('torInfo');
 
         toggle.checked = data.enabled;
         newIpBtn.disabled = !data.enabled;
@@ -1135,15 +1594,12 @@
         if (data.enabled && data.running) {
           statusDiv.className = 'tor-status connected';
           statusText.textContent = data.currentIp ? `Connected: ${data.currentIp}` : 'Connected';
-          infoDiv.textContent = 'Tor is active. Your traffic is being routed through the Tor network.';
         } else if (data.enabled && !data.running) {
           statusDiv.className = 'tor-status disconnected';
           statusText.textContent = 'Service not running';
-          infoDiv.textContent = 'Tor service is not running. Click "Test Connection" to check.';
         } else {
           statusDiv.className = 'tor-status disconnected';
           statusText.textContent = 'Disabled';
-          infoDiv.textContent = 'Enable Tor to route traffic through different IPs and avoid blocking.';
         }
       } catch (error) {
         console.error('Failed to load Tor status:', error);
@@ -1155,7 +1611,6 @@
       const statusDiv = document.getElementById('torStatus');
       const statusText = document.getElementById('torStatusText');
       const newIpBtn = document.getElementById('torNewIpBtn');
-      const infoDiv = document.getElementById('torInfo');
 
       statusText.textContent = 'Updating...';
 
@@ -1174,29 +1629,22 @@
           if (data.enabled && data.running) {
             statusDiv.className = 'tor-status connected';
             statusText.textContent = 'Enabled - Testing...';
-            infoDiv.textContent = 'Tor enabled. Testing connection...';
-            // Auto-test connection when enabled
             setTimeout(testTor, 1000);
           } else if (data.enabled) {
             statusDiv.className = 'tor-status disconnected';
             statusText.textContent = 'Starting...';
-            infoDiv.textContent = 'Starting Tor service...';
-            // Wait and test
             setTimeout(testTor, 5000);
           } else {
             statusDiv.className = 'tor-status disconnected';
             statusText.textContent = 'Disabled';
-            infoDiv.textContent = 'Enable Tor to route traffic through different IPs and avoid blocking.';
           }
         } else {
           toggle.checked = !toggle.checked;
-          statusText.textContent = 'Error';
-          infoDiv.textContent = data.error || 'Failed to toggle Tor';
+          statusText.textContent = data.error || 'Error';
         }
       } catch (error) {
         toggle.checked = !toggle.checked;
         statusText.textContent = 'Error';
-        infoDiv.textContent = error.message;
       }
     }
 
@@ -1204,11 +1652,10 @@
       const testBtn = document.getElementById('torTestBtn');
       const statusDiv = document.getElementById('torStatus');
       const statusText = document.getElementById('torStatusText');
-      const infoDiv = document.getElementById('torInfo');
 
       testBtn.disabled = true;
       testBtn.textContent = 'Testing...';
-      statusText.textContent = 'Testing connection...';
+      statusText.textContent = 'Testing...';
 
       try {
         const response = await fetch('/api/tor/test', {
@@ -1221,20 +1668,16 @@
         if (data.success) {
           statusDiv.className = 'tor-status connected';
           statusText.textContent = `${data.ip} (${data.country})`;
-          infoDiv.textContent = `Connected via Tor - ${data.city}, ${data.country} - Latency: ${data.latency}`;
         } else if (data.blocked) {
           statusDiv.className = 'tor-status blocked';
           statusText.textContent = 'Possibly blocked';
-          infoDiv.textContent = data.suggestion || 'Tor might be blocked in your region.';
         } else {
           statusDiv.className = 'tor-status disconnected';
           statusText.textContent = 'Connection failed';
-          infoDiv.textContent = data.error || 'Could not connect through Tor';
         }
       } catch (error) {
         statusDiv.className = 'tor-status disconnected';
         statusText.textContent = 'Test failed';
-        infoDiv.textContent = error.message;
       } finally {
         testBtn.disabled = false;
         testBtn.textContent = 'Test Connection';
@@ -1244,10 +1687,9 @@
     async function getNewTorIp() {
       const newIpBtn = document.getElementById('torNewIpBtn');
       const statusText = document.getElementById('torStatusText');
-      const infoDiv = document.getElementById('torInfo');
 
       newIpBtn.disabled = true;
-      newIpBtn.textContent = 'Getting new IP...';
+      newIpBtn.textContent = 'Getting...';
       statusText.textContent = 'Requesting new circuit...';
 
       try {
@@ -1260,16 +1702,12 @@
 
         if (data.success) {
           statusText.textContent = `New IP: ${data.newIp}`;
-          infoDiv.textContent = data.message;
-          // Test to get full info
           setTimeout(testTor, 1000);
         } else {
           statusText.textContent = 'Failed to get new IP';
-          infoDiv.textContent = data.error || 'Could not establish new circuit';
         }
       } catch (error) {
         statusText.textContent = 'Error';
-        infoDiv.textContent = error.message;
       } finally {
         newIpBtn.disabled = false;
         newIpBtn.textContent = 'New IP';

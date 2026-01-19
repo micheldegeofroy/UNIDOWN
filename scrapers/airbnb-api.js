@@ -206,8 +206,15 @@ function parseRoomDetails(html, roomUrl) {
     checkOut: '',
     houseRules: [],
     petFriendly: null,
+    childFriendly: null,
     smokingAllowed: null,
-    partiesAllowed: null
+    partiesAllowed: null,
+    minimumStay: null,
+    cancellationPolicy: '',
+    freeCancellation: null,
+    state: '',
+    country: '',
+    licenseNumber: ''
   };
 
   try {
@@ -488,6 +495,117 @@ function parseRoomDetails(html, roomUrl) {
       data.partiesAllowed = false;
     }
 
+    // Check child friendly
+    const childAmenities = ['Crib', 'High chair', 'Children\'s books and toys', 'Children\'s dinnerware', 'Baby bath', 'Baby monitor', 'Babysitter recommendations', 'Board games', 'Baby safety gates', 'Fireplace guards', 'Table corner guards', 'Outlet covers', 'Window guards'];
+    const hasChildAmenities = data.amenities.some(a =>
+      childAmenities.some(ca => a.toLowerCase().includes(ca.toLowerCase()))
+    );
+    if (hasChildAmenities) {
+      data.childFriendly = true;
+    } else if (html.includes('Not suitable for children') || html.includes('not safe for children') || html.includes('"title":"Not suitable for infants"')) {
+      data.childFriendly = false;
+    }
+
+    // Extract minimum stay
+    const minStayMatch = html.match(/"minNights":(\d+)/);
+    if (minStayMatch) {
+      data.minimumStay = parseInt(minStayMatch[1]);
+    }
+    // Fallback patterns
+    if (!data.minimumStay) {
+      const minStayAltMatch = html.match(/(\d+)\s*night minimum/i);
+      if (minStayAltMatch) {
+        data.minimumStay = parseInt(minStayAltMatch[1]);
+      }
+    }
+
+    // Extract cancellation policy
+    const cancellationMatch = html.match(/"cancellationPolicy":\{[^}]*"name":"([^"]+)"/);
+    if (cancellationMatch) {
+      data.cancellationPolicy = cancellationMatch[1];
+    }
+    // Fallback
+    if (!data.cancellationPolicy) {
+      const policyAltMatch = html.match(/"cancellationPolicyLabel":"([^"]+)"/);
+      if (policyAltMatch) {
+        data.cancellationPolicy = policyAltMatch[1];
+      }
+    }
+    // Another fallback
+    if (!data.cancellationPolicy) {
+      const policyTextMatch = html.match(/Free cancellation|Flexible|Moderate|Strict|Non-refundable/i);
+      if (policyTextMatch) {
+        data.cancellationPolicy = policyTextMatch[0];
+      }
+    }
+
+    // Determine if free cancellation
+    if (data.cancellationPolicy) {
+      const policyLower = data.cancellationPolicy.toLowerCase();
+      data.freeCancellation = policyLower.includes('free') || policyLower.includes('flexible') || policyLower.includes('full refund');
+    }
+
+    // Extract state/region
+    const stateMatch = html.match(/"state":"([^"]+)"/);
+    if (stateMatch) {
+      data.state = stateMatch[1];
+    }
+    // Fallback - look for region in location string
+    if (!data.state) {
+      const regionMatch = html.match(/"market":"([^"]+)"/);
+      if (regionMatch) {
+        data.state = regionMatch[1];
+      }
+    }
+
+    // Extract country
+    const countryMatch = html.match(/"country":"([^"]+)"/);
+    if (countryMatch) {
+      data.country = countryMatch[1];
+    }
+    // Fallback
+    if (!data.country) {
+      const countryAltMatch = html.match(/"countryCode":"([^"]+)"/);
+      if (countryAltMatch) {
+        data.country = countryAltMatch[1];
+      }
+    }
+
+    // Extract license/registration number (Turistic Number)
+    const licenseMatch = html.match(/"registrationNumber":"([^"]+)"/);
+    if (licenseMatch) {
+      data.licenseNumber = licenseMatch[1];
+    }
+    // Fallback patterns for different regions
+    if (!data.licenseNumber) {
+      const licenseAltMatch = html.match(/(?:License|Registration|Permit|Tourist License|Licence)(?:\s*(?:number|#|:))?\s*[:.]?\s*([A-Z0-9\-\/\.]+)/i);
+      if (licenseAltMatch) {
+        data.licenseNumber = licenseAltMatch[1];
+      }
+    }
+    // Look for common license patterns in description or anywhere
+    if (!data.licenseNumber) {
+      // Spanish turistic license pattern (e.g., VT-123456-A)
+      const spanishLicenseMatch = html.match(/VT[-\s]?\d{4,}[-\s]?[A-Z]?/i);
+      if (spanishLicenseMatch) {
+        data.licenseNumber = spanishLicenseMatch[0];
+      }
+    }
+    if (!data.licenseNumber) {
+      // French license pattern
+      const frenchLicenseMatch = html.match(/\d{13}[A-Z]{2}\d{4}/);
+      if (frenchLicenseMatch) {
+        data.licenseNumber = frenchLicenseMatch[0];
+      }
+    }
+    if (!data.licenseNumber) {
+      // Italian CIR pattern
+      const italianLicenseMatch = html.match(/IT\d{3}[A-Z]{2}\d{5}[A-Z0-9]*/i);
+      if (italianLicenseMatch) {
+        data.licenseNumber = italianLicenseMatch[0];
+      }
+    }
+
   } catch (error) {
     console.error('Error parsing room details:', error.message);
   }
@@ -531,12 +649,13 @@ async function scrapeAirbnbApi(url) {
       fs.mkdirSync(imagesDir, { recursive: true });
     }
 
-    // Download images using binary download function
+    // Download all images
     const downloadedImages = [];
-    for (let i = 0; i < Math.min(5, data.images.length); i++) {
+    console.log(`Found ${data.images.length} images to download`);
+    for (let i = 0; i < data.images.length; i++) {
       try {
         const imgUrl = data.images[i];
-        console.log(`Downloading image ${i + 1}: ${imgUrl}`);
+        console.log(`Downloading image ${i + 1}/${data.images.length}: ${imgUrl}`);
         const imgResponse = await downloadImage(imgUrl);
 
         if (imgResponse.status === 200 && imgResponse.buffer.length > 1000) {
@@ -563,6 +682,29 @@ async function scrapeAirbnbApi(url) {
       }
     }
 
+    // Download host avatar
+    let hostAvatarLocal = null;
+    if (data.host && data.host.profilePicture) {
+      try {
+        console.log('Downloading host avatar...');
+        const avatarResponse = await downloadImage(data.host.profilePicture);
+        if (avatarResponse.status === 200 && avatarResponse.buffer.length > 500) {
+          let ext = 'jpg';
+          if (avatarResponse.contentType) {
+            if (avatarResponse.contentType.includes('png')) ext = 'png';
+            else if (avatarResponse.contentType.includes('webp')) ext = 'webp';
+          }
+          const avatarName = `host_avatar.${ext}`;
+          const avatarPath = path.join(imagesDir, avatarName);
+          fs.writeFileSync(avatarPath, avatarResponse.buffer);
+          hostAvatarLocal = `/downloads/${folderId}/images/${avatarName}`;
+          console.log(`Downloaded host avatar: ${avatarName}`);
+        }
+      } catch (avatarError) {
+        console.log('Failed to download host avatar:', avatarError.message);
+      }
+    }
+
     // Save description
     if (data.description) {
       fs.writeFileSync(path.join(downloadDir, 'description.txt'), data.description);
@@ -578,11 +720,41 @@ async function scrapeAirbnbApi(url) {
       images: downloadedImages,
       sourceUrl: url,
       scrapedAt: new Date().toISOString(),
-      rating: data.reviews?.rating || 0,
-      reviewCount: data.reviews?.count || 0,
-      host: data.host || {},
+      // Host info (name and avatar only)
+      host: {
+        name: data.host?.name || '',
+        profilePicture: data.host?.profilePicture || '',
+        avatarLocal: hostAvatarLocal
+      },
+      // Property details
+      propertyType: data.propertyType || '',
+      bedrooms: data.bedrooms || 0,
+      bathrooms: data.bathrooms || 0,
+      beds: data.beds || 0,
+      maxGuests: data.maxGuests || 0,
+      // Amenities
       amenities: data.amenities || [],
-      location: data.location || {}
+      // Location
+      location: {
+        ...data.location,
+        state: data.state || '',
+        country: data.country || ''
+      },
+      // Pricing & booking
+      price: data.price || {},
+      minimumStay: data.minimumStay || null,
+      checkIn: data.checkIn || '',
+      checkOut: data.checkOut || '',
+      // Policies
+      cancellationPolicy: data.cancellationPolicy || '',
+      freeCancellation: data.freeCancellation,
+      houseRules: data.houseRules || [],
+      petFriendly: data.petFriendly,
+      childFriendly: data.childFriendly,
+      smokingAllowed: data.smokingAllowed,
+      partiesAllowed: data.partiesAllowed,
+      // License/Registration
+      licenseNumber: data.licenseNumber || ''
     };
 
     fs.writeFileSync(

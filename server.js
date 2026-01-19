@@ -154,6 +154,31 @@ app.delete('/api/saved-urls/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// Update a saved URL (name)
+app.patch('/api/saved-urls/:id', (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!fs.existsSync(savedUrlsPath)) {
+    return res.status(404).json({ error: 'No saved URLs found' });
+  }
+
+  let savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
+  const index = savedUrls.findIndex(item => item.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'URL not found' });
+  }
+
+  if (name) {
+    savedUrls[index].name = name.trim();
+  }
+
+  fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+
+  res.json({ success: true, entry: savedUrls[index] });
+});
+
 // ============================================
 // LISTINGS API
 // ============================================
@@ -193,6 +218,160 @@ app.delete('/api/listings/:id', (req, res) => {
           // Delete the folder
           fs.rmSync(path.join(downloadsDir, folder), { recursive: true });
           return res.json({ success: true });
+        }
+      }
+    }
+  }
+
+  res.status(404).json({ error: 'Listing not found' });
+});
+
+// Update listing (re-scrape and aggregate data)
+app.post('/api/listings/:id/update', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the existing listing
+    let existingMetadata = null;
+    let listingFolder = null;
+
+    if (fs.existsSync(downloadsDir)) {
+      const folders = fs.readdirSync(downloadsDir);
+
+      for (const folder of folders) {
+        const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+        if (fs.existsSync(metaPath)) {
+          const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+          if (metadata.id === id) {
+            existingMetadata = metadata;
+            listingFolder = folder;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!existingMetadata || !existingMetadata.sourceUrl) {
+      return res.status(404).json({ error: 'Listing not found or missing source URL' });
+    }
+
+    console.log(`Updating listing ${id} from ${existingMetadata.sourceUrl}`);
+
+    // Re-scrape the listing
+    const result = await scrapeAirbnbApi(existingMetadata.sourceUrl);
+
+    if (!result.success) {
+      throw new Error('Failed to re-scrape listing');
+    }
+
+    // Load the newly scraped metadata
+    const newMetaPath = path.join(downloadsDir, listingFolder, 'metadata.json');
+    const newMetadata = JSON.parse(fs.readFileSync(newMetaPath, 'utf8'));
+
+    // Aggregate data - merge existing with new
+    const aggregatedMetadata = {
+      ...newMetadata,
+      // Keep the original scraped date, add update date
+      firstScrapedAt: existingMetadata.firstScrapedAt || existingMetadata.scrapedAt,
+      scrapedAt: new Date().toISOString(),
+      // Merge images (avoid duplicates based on original URL)
+      images: mergeImages(existingMetadata.images || [], newMetadata.images || []),
+      // Merge amenities (avoid duplicates)
+      amenities: [...new Set([...(existingMetadata.amenities || []), ...(newMetadata.amenities || [])])],
+      // Merge house rules (avoid duplicates)
+      houseRules: [...new Set([...(existingMetadata.houseRules || []), ...(newMetadata.houseRules || [])])],
+      // Keep non-null values (prefer new data, but keep old if new is empty)
+      description: newMetadata.description || existingMetadata.description,
+      title: newMetadata.title || existingMetadata.title,
+      // Keep historical data
+      updateCount: (existingMetadata.updateCount || 0) + 1,
+      updateHistory: [
+        ...(existingMetadata.updateHistory || []),
+        { date: new Date().toISOString() }
+      ]
+    };
+
+    // Calculate new images added
+    const newImagesCount = aggregatedMetadata.images.length - (existingMetadata.images || []).length;
+
+    // Save aggregated metadata
+    fs.writeFileSync(newMetaPath, JSON.stringify(aggregatedMetadata, null, 2));
+
+    res.json({
+      success: true,
+      newImages: newImagesCount,
+      totalImages: aggregatedMetadata.images.length,
+      updateCount: aggregatedMetadata.updateCount
+    });
+
+  } catch (error) {
+    console.error('Update error:', error);
+    res.status(500).json({
+      error: 'Failed to update listing',
+      details: error.message
+    });
+  }
+});
+
+// Helper function to merge images without duplicates
+function mergeImages(existingImages, newImages) {
+  const imageMap = new Map();
+
+  // Add existing images first
+  for (const img of existingImages) {
+    const key = img.original || img.local;
+    if (key) {
+      imageMap.set(key, img);
+    }
+  }
+
+  // Add new images (will overwrite if same URL)
+  for (const img of newImages) {
+    const key = img.original || img.local;
+    if (key && !imageMap.has(key)) {
+      imageMap.set(key, img);
+    }
+  }
+
+  return Array.from(imageMap.values());
+}
+
+// Download listing as ZIP
+app.get('/api/listings/:id/zip', async (req, res) => {
+  const { id } = req.params;
+
+  if (fs.existsSync(downloadsDir)) {
+    const folders = fs.readdirSync(downloadsDir);
+
+    for (const folder of folders) {
+      const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+      if (fs.existsSync(metaPath)) {
+        const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (metadata.id === id) {
+          const folderPath = path.join(downloadsDir, folder);
+          const zipFileName = `${folder}.zip`;
+
+          // Set headers for ZIP download
+          res.setHeader('Content-Type', 'application/zip');
+          res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
+
+          // Create ZIP using archiver
+          const archiver = require('archiver');
+          const archive = archiver('zip', { zlib: { level: 9 } });
+
+          archive.on('error', (err) => {
+            res.status(500).json({ error: err.message });
+          });
+
+          // Pipe archive to response
+          archive.pipe(res);
+
+          // Add the folder contents to the archive
+          archive.directory(folderPath, folder);
+
+          // Finalize the archive
+          await archive.finalize();
+          return;
         }
       }
     }
