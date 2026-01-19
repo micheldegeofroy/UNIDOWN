@@ -1195,7 +1195,7 @@
             Tor Network
           </label>
           <label class="switch">
-            <input type="checkbox" id="torToggle" onchange="toggleTor()">
+            <input type="checkbox" id="torToggle" onchange="toggleTor()" checked>
             <span class="slider"></span>
           </label>
         </div>
@@ -1934,7 +1934,7 @@
         statusText.textContent = 'Test failed';
       } finally {
         testBtn.disabled = false;
-        testBtn.textContent = 'Test Connection';
+        testBtn.textContent = 'Test';
       }
     }
 

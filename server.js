@@ -518,7 +518,7 @@ const { exec } = require('child_process');
 const net = require('net');
 
 // Tor settings state
-let torEnabled = false;
+let torEnabled = true;
 const TOR_SOCKS_PORT = 9050;
 const TOR_CONTROL_PORT = 9051;
 
@@ -796,7 +796,7 @@ app.get('/api/settings', (req, res) => {
       randomizeFingerprint: true,
       humanDelays: true
     },
-    torEnabled: false
+    torEnabled: true
   };
 
   if (fs.existsSync(settingsPath)) {
