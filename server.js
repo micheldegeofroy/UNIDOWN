@@ -231,6 +231,56 @@ app.delete('/api/listings/:id', (req, res) => {
   res.status(404).json({ error: 'Listing not found' });
 });
 
+// Edit listing metadata (title, description, amenities, images)
+app.patch('/api/listings/:id', (req, res) => {
+  const { id } = req.params;
+  const { title, description, amenities, images } = req.body;
+
+  if (fs.existsSync(downloadsDir)) {
+    const folders = fs.readdirSync(downloadsDir);
+
+    for (const folder of folders) {
+      const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+      if (fs.existsSync(metaPath)) {
+        const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (metadata.id === id) {
+          // Update fields
+          if (title !== undefined) metadata.title = title;
+          if (description !== undefined) metadata.description = description;
+          if (amenities !== undefined) metadata.amenities = amenities;
+          if (images !== undefined) {
+            // Delete removed images from disk
+            const oldImages = metadata.images || [];
+            const newImagePaths = images.map(img => img.local);
+            for (const oldImg of oldImages) {
+              if (oldImg.local && !newImagePaths.includes(oldImg.local)) {
+                const imgPath = path.join(__dirname, oldImg.local);
+                if (fs.existsSync(imgPath)) {
+                  fs.unlinkSync(imgPath);
+                }
+              }
+            }
+            metadata.images = images;
+          }
+          metadata.editedAt = new Date().toISOString();
+
+          // Save updated metadata
+          fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+
+          // Also update description.txt
+          if (description !== undefined) {
+            fs.writeFileSync(path.join(downloadsDir, folder, 'description.txt'), description);
+          }
+
+          return res.json({ success: true, listing: metadata });
+        }
+      }
+    }
+  }
+
+  res.status(404).json({ error: 'Listing not found' });
+});
+
 // Update listing (re-scrape and aggregate data)
 app.post('/api/listings/:id/update', async (req, res) => {
   const { id } = req.params;
@@ -465,6 +515,86 @@ async function deduplicateImages(images, threshold = 5) {
   return uniqueImages;
 }
 
+// Analyze images and return with similarity grouping
+async function analyzeImageSimilarity(images, threshold = 5) {
+  const results = [];
+  const hashes = [];
+
+  // First pass: compute all hashes
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    const imgPath = img.local || img;
+    const hash = await getImageHash(imgPath);
+    hashes.push({ index: i, hash, img });
+  }
+
+  // Second pass: find similar pairs and group them
+  const processed = new Set();
+  const groups = [];
+
+  for (let i = 0; i < hashes.length; i++) {
+    if (processed.has(i)) continue;
+
+    const group = [{ ...hashes[i].img, originalIndex: i, isDuplicate: false }];
+    processed.add(i);
+
+    if (hashes[i].hash) {
+      for (let j = i + 1; j < hashes.length; j++) {
+        if (processed.has(j)) continue;
+        if (!hashes[j].hash) continue;
+
+        const distance = hammingDistance(hashes[i].hash, hashes[j].hash);
+        if (distance <= threshold) {
+          group.push({ ...hashes[j].img, originalIndex: j, isDuplicate: true, similarity: distance });
+          processed.add(j);
+        }
+      }
+    }
+
+    groups.push(group);
+  }
+
+  // Flatten groups - first item is unique (green), rest are duplicates (red)
+  const analyzed = [];
+  for (const group of groups) {
+    for (const img of group) {
+      analyzed.push(img);
+    }
+  }
+
+  return {
+    images: analyzed,
+    groups: groups.length,
+    duplicates: analyzed.filter(img => img.isDuplicate).length
+  };
+}
+
+// API endpoint to analyze image similarity (for merge UI)
+app.post('/api/images/analyze', async (req, res) => {
+  const { images, threshold = 5 } = req.body;
+
+  if (!images || !Array.isArray(images)) {
+    return res.status(400).json({ error: 'Images array is required' });
+  }
+
+  try {
+    console.log(`Analyzing ${images.length} images for similarity...`);
+    const result = await analyzeImageSimilarity(images, threshold);
+    console.log(`Found ${result.groups} groups, ${result.duplicates} duplicates`);
+
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Analyze error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // API endpoint to deduplicate images
 app.post('/api/images/dedupe', async (req, res) => {
   const { images, threshold = 5 } = req.body;
@@ -502,31 +632,27 @@ app.post('/api/images/dedupe', async (req, res) => {
 
 // AI Merge using Ollama
 app.post('/api/ai/merge', async (req, res) => {
-  const { title1, title2, description1, description2, amenities1, amenities2 } = req.body;
+  const { description1, description2 } = req.body;
 
   try {
     // Check if Ollama is available
     const axios = require('axios');
 
-    const prompt = `You are helping merge two property listings from different platforms (Airbnb and Booking.com) for the same property.
+    const prompt = `You are helping merge two property descriptions from different platforms (Airbnb and Booking.com) for the same property.
 
-AIRBNB LISTING:
-Title: ${title1 || 'N/A'}
-Description: ${description1 || 'N/A'}
-Amenities: ${(amenities1 || []).join(', ') || 'N/A'}
+AIRBNB DESCRIPTION:
+${description1 || 'N/A'}
 
-BOOKING.COM LISTING:
-Title: ${title2 || 'N/A'}
-Description: ${description2 || 'N/A'}
-Amenities: ${(amenities2 || []).join(', ') || 'N/A'}
+BOOKING.COM DESCRIPTION:
+${description2 || 'N/A'}
 
-Please create a merged listing with:
-1. A single best title (choose the most descriptive one or combine them)
-2. A unified description that combines the best information from both, removing duplicates, in a natural flowing style
-3. A deduplicated list of amenities (combine similar ones like "WiFi" and "Free WiFi" into one)
+Create a single unified description that:
+- Combines the best information from both descriptions
+- Removes duplicate information
+- Flows naturally as one coherent description
+- Keeps it concise but informative
 
-Respond in this exact JSON format only, no other text:
-{"title": "merged title here", "description": "merged description here", "amenities": ["amenity1", "amenity2"]}`;
+Respond with ONLY the merged description text, no JSON, no quotes, no explanation.`;
 
     const response = await axios.post('http://localhost:11434/api/generate', {
       model: 'phi3:mini',
@@ -537,30 +663,12 @@ Respond in this exact JSON format only, no other text:
       }
     }, { timeout: 120000 });
 
-    // Parse the response
-    let result;
-    try {
-      // Extract JSON from response
-      const text = response.data.response;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('No JSON found in response');
-      }
-    } catch (parseError) {
-      console.error('Parse error:', parseError, 'Response:', response.data.response);
-      return res.json({
-        success: false,
-        error: 'Failed to parse AI response'
-      });
-    }
+    // Get the merged description directly
+    const mergedDescription = response.data.response.trim();
 
     res.json({
       success: true,
-      title: result.title,
-      description: result.description,
-      amenities: result.amenities
+      description: mergedDescription
     });
 
   } catch (error) {
@@ -594,13 +702,43 @@ app.post('/api/listings/merge', async (req, res) => {
       }
     }
 
-    // Create merged listing
-    const mergedId = `unified-${Date.now()}`;
-    const mergedFolder = `unified_${Date.now()}`;
-    const mergedDir = path.join(downloadsDir, mergedFolder);
-    const imagesDir = path.join(mergedDir, 'images');
+    // Determine if we're updating an existing unified listing or creating new
+    const isUpdatingExisting = leftListing?.platform === 'unified';
 
-    fs.mkdirSync(imagesDir, { recursive: true });
+    // Get platforms from both listings
+    function getListingPlatforms(listing) {
+      if (!listing) return [];
+      if (listing.platform === 'unified') {
+        return listing.platforms || ['airbnb', 'booking']; // Fallback for old format
+      }
+      return [listing.platform];
+    }
+
+    const leftPlatforms = getListingPlatforms(leftListing);
+    const rightPlatforms = getListingPlatforms(rightListing);
+
+    // Merge platforms (deduplicate)
+    const allPlatforms = [...new Set([...leftPlatforms, ...rightPlatforms])];
+
+    // Set up folder - use existing if updating, create new otherwise
+    let mergedId, mergedFolder, mergedDir, imagesDir;
+
+    if (isUpdatingExisting) {
+      // Update the existing unified listing
+      mergedId = leftListing.id;
+      mergedFolder = leftListing.folder;
+      mergedDir = path.join(downloadsDir, mergedFolder);
+      imagesDir = path.join(mergedDir, 'images');
+      console.log(`Updating existing unified listing: ${mergedId}`);
+    } else {
+      // Create new merged listing
+      mergedId = `unified-${Date.now()}`;
+      mergedFolder = `unified_${Date.now()}`;
+      mergedDir = path.join(downloadsDir, mergedFolder);
+      imagesDir = path.join(mergedDir, 'images');
+      fs.mkdirSync(imagesDir, { recursive: true });
+      console.log(`Creating new unified listing: ${mergedId}`);
+    }
 
     // Deduplicate images using perceptual hashing before copying
     console.log(`Deduplicating ${merged.images?.length || 0} images...`);
@@ -618,7 +756,10 @@ app.post('/api/listings/merge', async (req, res) => {
         if (fs.existsSync(actualSource)) {
           const filename = path.basename(img.local);
           const destPath = path.join(imagesDir, filename);
-          fs.copyFileSync(actualSource, destPath);
+          // Only copy if not already in destination
+          if (!fs.existsSync(destPath)) {
+            fs.copyFileSync(actualSource, destPath);
+          }
           mergedImages.push({
             local: `/downloads/${mergedFolder}/images/${filename}`,
             original: img.original
@@ -630,36 +771,54 @@ app.post('/api/listings/merge', async (req, res) => {
       }
     }
 
+    // Build sources object - merge existing sources with new ones
+    const existingSources = leftListing?.sources || {};
+    const newSources = { ...existingSources };
+
+    // Add source info from left if it's a single platform listing
+    if (leftListing && leftListing.platform !== 'unified') {
+      newSources[leftListing.platform] = {
+        id: leftListing.id,
+        url: leftListing.sourceUrl,
+        title: leftListing.title
+      };
+    }
+
+    // Add source info from right
+    if (rightListing && rightListing.platform !== 'unified') {
+      newSources[rightListing.platform] = {
+        id: rightListing.id,
+        url: rightListing.sourceUrl,
+        title: rightListing.title
+      };
+    } else if (rightListing && rightListing.platform === 'unified') {
+      // Merge sources from unified right listing
+      Object.assign(newSources, rightListing.sources || {});
+    }
+
     // Build merged metadata
     const mergedMetadata = {
       id: mergedId,
       platform: 'unified',
+      platforms: allPlatforms, // Dynamic platforms array
       title: merged.title || 'Merged Listing',
       description: merged.description || '',
       amenities: merged.amenities || [],
       images: mergedImages,
-      sources: {
-        airbnb: leftListing ? {
-          id: leftListing.id,
-          url: leftListing.sourceUrl,
-          title: leftListing.title
-        } : null,
-        booking: rightListing ? {
-          id: rightListing.id,
-          url: rightListing.sourceUrl,
-          title: rightListing.title
-        } : null
-      },
+      sources: newSources,
       location: leftListing?.location || rightListing?.location || {},
       host: leftListing?.host || rightListing?.host || {},
       pricing: {
-        airbnb: leftListing?.pricing || null,
-        booking: rightListing?.pricing || null
+        ...(leftListing?.pricing && leftListing.platform !== 'unified' ? { [leftListing.platform]: leftListing.pricing } : {}),
+        ...(leftListing?.pricing && leftListing.platform === 'unified' ? leftListing.pricing : {}),
+        ...(rightListing?.pricing && rightListing.platform !== 'unified' ? { [rightListing.platform]: rightListing.pricing } : {}),
+        ...(rightListing?.pricing && rightListing.platform === 'unified' ? rightListing.pricing : {})
       },
       sourceUrl: leftListing?.sourceUrl || rightListing?.sourceUrl || '',
       folder: mergedFolder,
-      scrapedAt: new Date().toISOString(),
-      mergedAt: new Date().toISOString()
+      scrapedAt: isUpdatingExisting ? (leftListing.scrapedAt || new Date().toISOString()) : new Date().toISOString(),
+      mergedAt: new Date().toISOString(),
+      updatedAt: isUpdatingExisting ? new Date().toISOString() : undefined
     };
 
     // Save metadata
@@ -676,7 +835,8 @@ app.post('/api/listings/merge', async (req, res) => {
 
     res.json({
       success: true,
-      listing: mergedMetadata
+      listing: mergedMetadata,
+      updated: isUpdatingExisting
     });
 
   } catch (error) {

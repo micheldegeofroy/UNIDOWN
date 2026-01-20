@@ -634,6 +634,10 @@
       background: #003580;
     }
 
+    .platform-dot.vrbo {
+      background: #0067B3;
+    }
+
     .custom-select-placeholder {
       color: #717171;
     }
@@ -855,6 +859,11 @@
       color: #003580;
     }
 
+    .listing-platform.vrbo {
+      background: #E8F8E8;
+      color: #0067B3;
+    }
+
     .listing-platform.unified {
       background: linear-gradient(90deg, #FFF0F1 0%, #E8F4FD 100%);
       color: #222;
@@ -1044,6 +1053,142 @@
       overflow-y: auto;
     }
 
+    .edit-section {
+      margin-bottom: 20px;
+    }
+
+    .edit-section label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #222;
+    }
+
+    .edit-input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #EBEBEB;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .edit-input:focus {
+      border-color: #222;
+    }
+
+    .edit-textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      border: 1px solid #EBEBEB;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    .edit-textarea:focus {
+      border-color: #222;
+    }
+
+    .edit-images-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .edit-image {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .edit-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .edit-image-delete {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .edit-image-delete:hover {
+      background: #FF385C;
+    }
+
+    .edit-amenities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .edit-amenity {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #F7F7F7;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+
+    .edit-amenity-delete {
+      background: none;
+      border: none;
+      color: #717171;
+      cursor: pointer;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .edit-amenity-delete:hover {
+      color: #FF385C;
+    }
+
+    .edit-add-amenity {
+      display: flex;
+      gap: 8px;
+    }
+
+    .edit-add-amenity input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #EBEBEB;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #EBEBEB;
+    }
+
     .gallery {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -1142,6 +1287,10 @@
       background: #E8F4FD;
     }
 
+    .merge-panel-header.vrbo {
+      background: #E8F8E8;
+    }
+
     .merge-panel-header.merged {
       background: linear-gradient(90deg, #FFF0F1 0%, #E8F4FD 100%);
     }
@@ -1213,6 +1362,38 @@
 
     .merge-field-content.expanded {
       max-height: none;
+    }
+
+    .merge-input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid #EBEBEB;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .merge-input:focus {
+      border-color: #222;
+    }
+
+    .merge-textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      border: 1px solid #EBEBEB;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    .merge-textarea:focus {
+      border-color: #222;
     }
 
     .merge-arrow {
@@ -1303,6 +1484,35 @@
       font-size: 12px;
     }
 
+    .merge-image-tick {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 22px;
+      height: 22px;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .merge-image.duplicate {
+      opacity: 0.7;
+      border: 3px solid #C13515 !important;
+    }
+
+    .merge-image.unique {
+      border: 3px solid #008A05 !important;
+    }
+
+    .merge-image.duplicate:hover,
+    .merge-image.unique:hover {
+      opacity: 1;
+    }
+
     .merge-image img {
       width: 100%;
       height: 100%;
@@ -1345,6 +1555,11 @@
 
     .platform-badge.booking {
       background: #003580;
+      color: white;
+    }
+
+    .platform-badge.vrbo {
+      background: #0067B3;
       color: white;
     }
 
@@ -1517,6 +1732,18 @@
     </div>
   </div>
 
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2>Edit Listing</h2>
+        <button class="modal-close" onclick="closeEditModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="editModalBody">
+      </div>
+    </div>
+  </div>
+
   <!-- Merge Modal - 3 Panel System -->
   <div id="mergeModal" class="modal merge-modal">
     <div class="modal-content">
@@ -1553,8 +1780,8 @@
           <div class="merge-panel-body" id="mergeCenterBody">
             <div class="merge-section">
               <div class="merge-section-header">Title</div>
-              <div class="merge-field" id="mergedTitle">
-                <div class="merge-field-content">Click a title from left or right to use it</div>
+              <div class="merge-field">
+                <input type="text" id="mergedTitleInput" class="merge-input" placeholder="Click a title from left/right or type your own" oninput="mergeState.merged.title = this.value" />
               </div>
             </div>
 
@@ -1565,8 +1792,8 @@
                   ✨ AI Merge
                 </button>
               </div>
-              <div class="merge-field" id="mergedDescription">
-                <div class="merge-field-content">Select descriptions or use AI Merge</div>
+              <div class="merge-field">
+                <textarea id="mergedDescriptionInput" class="merge-textarea" placeholder="Select a description, use AI Merge, or type your own" oninput="mergeState.merged.description = this.value"></textarea>
               </div>
             </div>
 
@@ -1578,12 +1805,7 @@
             </div>
 
             <div class="merge-section">
-              <div class="merge-section-header">
-                Images (<span id="mergedImageCount">0</span> selected)
-                <button class="btn btn-small btn-outline" onclick="dedupeImages()" id="dedupeBtn" disabled>
-                  🔍 Find Duplicates
-                </button>
-              </div>
+              <span id="mergedImageCount" style="display:none;">0</span>
               <div class="merge-image-grid" id="mergedImages">
               </div>
               <div id="dedupeStatus" style="font-size: 12px; color: #717171; margin-top: 8px;"></div>
@@ -1591,6 +1813,7 @@
           </div>
           <div class="merge-actions">
             <button class="btn btn-outline" onclick="closeMergeModal()">Cancel</button>
+            <button class="btn btn-outline btn-danger" onclick="dedupeImages()" id="removeDupesBtn" style="width: 150px;">Remove Duplicates</button>
             <button class="btn btn-primary" onclick="saveMergedListing()" id="saveMergeBtn" style="width: 150px;">Save Merged</button>
           </div>
         </div>
@@ -2040,8 +2263,8 @@
               </div>
               <div class="listing-content">
                 ${listing.platform === 'unified'
-                  ? `<div class="merged-badges"><span class="platform-badge airbnb">AIRBNB</span><span class="platform-badge booking">BOOKING</span></div>`
-                  : `<span class="listing-platform ${listing.platform}">${listing.platform}</span>`
+                  ? `<div style="display: flex; gap: 4px;">${(listing.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}">${p.toUpperCase()}</span>`).join('')}</div>`
+                  : `<span class="listing-platform ${listing.platform}">${listing.platform.toUpperCase()}</span>`
                 }
                 <h3 class="listing-title">${listing.title || 'Untitled Listing'}</h3>
                 <a href="${listing.sourceUrl}" target="_blank" class="listing-url">${listing.sourceUrl}</a>
@@ -2062,7 +2285,8 @@
                     <span class="listing-date">Scraped: ${new Date(listing.scrapedAt).toLocaleDateString()} ${new Date(listing.scrapedAt).toLocaleTimeString()}</span>
                   </div>
                   <div class="listing-actions">
-                    <button class="btn btn-outline btn-small" onclick="openMergeModal()">Merge</button>
+                    <button class="btn btn-outline btn-small" onclick="openEditModal('${listing.id}')">Edit</button>
+                    <button class="btn btn-outline btn-small" onclick="openMergeModal('${listing.id}')">Merge</button>
                     <a href="/api/listings/${listing.id}/zip" class="btn btn-outline btn-small" download>Download</a>
                     <button class="btn btn-outline btn-small" onclick="updateListing('${listing.id}')" id="updateBtn-${listing.id}">Update</button>
                     <button class="btn btn-outline btn-small btn-danger" onclick="deleteListing('${listing.id}')">Delete</button>
@@ -2156,6 +2380,143 @@
     function closeModal() {
       document.getElementById('detailModal').classList.remove('active');
     }
+
+    // Edit modal state
+    let editState = {
+      id: null,
+      title: '',
+      description: '',
+      amenities: [],
+      images: []
+    };
+
+    function openEditModal(id) {
+      const listing = currentListings.find(l => l.id === id);
+      if (!listing) return;
+
+      editState = {
+        id: listing.id,
+        title: listing.title || '',
+        description: listing.description || '',
+        amenities: [...(listing.amenities || [])],
+        images: [...(listing.images || [])]
+      };
+
+      renderEditModal();
+      document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.remove('active');
+    }
+
+    function renderEditModal() {
+      const body = document.getElementById('editModalBody');
+      body.innerHTML = `
+        <div class="edit-section">
+          <label>Title</label>
+          <input type="text" class="edit-input" value="${editState.title.replace(/"/g, '&quot;')}" oninput="editState.title = this.value" />
+        </div>
+
+        <div class="edit-section">
+          <label>Description</label>
+          <textarea class="edit-textarea" oninput="editState.description = this.value">${editState.description}</textarea>
+        </div>
+
+        <div class="edit-section">
+          <label>Amenities</label>
+          <div class="edit-amenities" id="editAmenities">
+            ${editState.amenities.map((a, i) => `
+              <span class="edit-amenity">
+                ${a}
+                <button class="edit-amenity-delete" onclick="removeEditAmenity(${i})">×</button>
+              </span>
+            `).join('')}
+          </div>
+          <div class="edit-add-amenity">
+            <input type="text" id="newAmenityInput" placeholder="Add new amenity" onkeypress="if(event.key==='Enter') addEditAmenity()" />
+            <button class="btn btn-outline btn-small" onclick="addEditAmenity()">Add</button>
+          </div>
+        </div>
+
+        <div class="edit-section">
+          <label>Images (${editState.images.length})</label>
+          <div class="edit-images-grid">
+            ${editState.images.map((img, i) => `
+              <div class="edit-image">
+                <img src="${img.local}" alt="Image ${i+1}" />
+                <button class="edit-image-delete" onclick="removeEditImage(${i})">×</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="edit-actions">
+          <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveEditedListing()">Save Changes</button>
+        </div>
+      `;
+    }
+
+    function removeEditAmenity(index) {
+      editState.amenities.splice(index, 1);
+      renderEditModal();
+    }
+
+    function addEditAmenity() {
+      const input = document.getElementById('newAmenityInput');
+      const value = input.value.trim();
+      if (value && !editState.amenities.includes(value)) {
+        editState.amenities.push(value);
+        renderEditModal();
+      }
+    }
+
+    function removeEditImage(index) {
+      editState.images.splice(index, 1);
+      renderEditModal();
+    }
+
+    async function saveEditedListing() {
+      const saveBtn = document.querySelector('.edit-actions .btn-primary');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      try {
+        const response = await fetch(`/api/listings/${editState.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: editState.title,
+            description: editState.description,
+            amenities: editState.amenities,
+            images: editState.images
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeEditModal();
+          loadListings();
+          showStatus('Listing updated successfully!', 'success');
+        } else {
+          alert('Save failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Save error: ' + error.message);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
+      }
+    }
+
+    // Close edit modal on outside click
+    document.getElementById('editModal').addEventListener('click', (e) => {
+      if (e.target.id === 'editModal') {
+        closeEditModal();
+      }
+    });
 
     // Close modal on outside click
     document.getElementById('detailModal').addEventListener('click', (e) => {
@@ -2361,7 +2722,7 @@
       }
     };
 
-    function openMergeModal() {
+    function openMergeModal(preselectedId = null) {
       // Reset merge state
       mergeState = {
         left: null,
@@ -2369,24 +2730,30 @@
         merged: { title: '', description: '', amenities: [], images: [], sources: {} }
       };
 
-      // Get listings by platform
-      const airbnbListings = currentListings.filter(l => l.platform === 'airbnb');
-      const bookingListings = currentListings.filter(l => l.platform === 'booking');
+      // Find preselected listing
+      const preselected = preselectedId ? currentListings.find(l => l.id === preselectedId) : null;
 
-      // Populate left panel with Airbnb listings selector
+      // Get listings by platform (unified goes with airbnb on left)
+      const leftListings = currentListings.filter(l => l.platform === 'airbnb' || l.platform === 'unified');
+      const rightListings = currentListings.filter(l => l.platform === 'booking' || l.platform === 'unified');
+
+      // Populate left panel with listings selector
       const leftBody = document.getElementById('mergeLeftBody');
-      if (airbnbListings.length === 0) {
+      if (leftListings.length === 0) {
         leftBody.innerHTML = `<div class="empty-merge-panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m-8-8h16"/></svg>
-          <p>No Airbnb listings available</p>
+          <p>No listings available</p>
         </div>`;
       } else {
         leftBody.innerHTML = `
           <div class="merge-section">
             <div class="merge-section-header">Select Listing</div>
-            ${airbnbListings.map(l => `
+            ${leftListings.map(l => `
               <div class="merge-field" onclick="selectMergeSource('left', '${l.id}')">
-                <div class="merge-field-title">${l.title || 'Untitled'}</div>
+                <div class="merge-field-title">${l.platform === 'unified'
+                  ? `<span style="display:inline-flex;gap:3px;margin-right:4px;">${(l.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:9px;padding:1px 4px;">${p.toUpperCase()}</span>`).join('')}</span>`
+                  : ''
+                }${l.title || 'Untitled'}</div>
                 <div class="merge-field-content">${(l.description || '').substring(0, 100)}...</div>
               </div>
             `).join('')}
@@ -2394,20 +2761,23 @@
         `;
       }
 
-      // Populate right panel with Booking listings selector
+      // Populate right panel with listings selector
       const rightBody = document.getElementById('mergeRightBody');
-      if (bookingListings.length === 0) {
+      if (rightListings.length === 0) {
         rightBody.innerHTML = `<div class="empty-merge-panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m-8-8h16"/></svg>
-          <p>No Booking.com listings available</p>
+          <p>No listings available</p>
         </div>`;
       } else {
         rightBody.innerHTML = `
           <div class="merge-section">
             <div class="merge-section-header">Select Listing</div>
-            ${bookingListings.map(l => `
+            ${rightListings.map(l => `
               <div class="merge-field" onclick="selectMergeSource('right', '${l.id}')">
-                <div class="merge-field-title">${l.title || 'Untitled'}</div>
+                <div class="merge-field-title">${l.platform === 'unified'
+                  ? `<span style="display:inline-flex;gap:3px;margin-right:4px;">${(l.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:9px;padding:1px 4px;">${p.toUpperCase()}</span>`).join('')}</span>`
+                  : ''
+                }${l.title || 'Untitled'}</div>
                 <div class="merge-field-content">${(l.description || '').substring(0, 100)}...</div>
               </div>
             `).join('')}
@@ -2419,6 +2789,15 @@
       resetMergedPanel();
 
       document.getElementById('mergeModal').classList.add('active');
+
+      // Auto-select preselected listing based on platform
+      if (preselected) {
+        if (preselected.platform === 'airbnb' || preselected.platform === 'unified') {
+          selectMergeSource('left', preselectedId);
+        } else if (preselected.platform === 'booking') {
+          selectMergeSource('right', preselectedId);
+        }
+      }
     }
 
     function closeMergeModal() {
@@ -2483,6 +2862,11 @@
 
       // Enable AI merge if both sides selected
       updateAIMergeButton();
+
+      // If both sides are now selected, auto-merge all images and analyze
+      if (mergeState.left && mergeState.right) {
+        autoMergeAndAnalyzeImages();
+      }
     }
 
     function addToMerged(field, side) {
@@ -2491,14 +2875,10 @@
 
       if (field === 'title') {
         mergeState.merged.title = listing.title || '';
-        document.getElementById('mergedTitle').innerHTML = `
-          <div class="merge-field-title">${mergeState.merged.title}</div>
-        `;
+        document.getElementById('mergedTitleInput').value = mergeState.merged.title;
       } else if (field === 'description') {
         mergeState.merged.description = listing.description || '';
-        document.getElementById('mergedDescription').innerHTML = `
-          <div class="merge-field-content expanded">${mergeState.merged.description}</div>
-        `;
+        document.getElementById('mergedDescriptionInput').value = mergeState.merged.description;
       }
     }
 
@@ -2562,12 +2942,10 @@
     function updateMergedImages() {
       const container = document.getElementById('mergedImages');
       const countEl = document.getElementById('mergedImageCount');
-      const dedupeBtn = document.getElementById('dedupeBtn');
       const dedupeStatus = document.getElementById('dedupeStatus');
 
       countEl.textContent = mergeState.merged.images.length;
-      dedupeBtn.disabled = mergeState.merged.images.length < 2;
-      dedupeStatus.textContent = '';
+      if (dedupeStatus) dedupeStatus.textContent = '';
 
       if (mergeState.merged.images.length === 0) {
         container.innerHTML = '';
@@ -2580,7 +2958,171 @@
       }
     }
 
+    async function autoMergeAndAnalyzeImages() {
+      const status = document.getElementById('dedupeStatus');
+      status.textContent = 'Analyzing all images for duplicates...';
+
+      // Update merged panel header badges based on platforms being merged
+      const allPlatforms = new Set();
+      if (mergeState.left) {
+        if (mergeState.left.platform === 'unified') {
+          (mergeState.left.platforms || ['airbnb', 'booking']).forEach(p => allPlatforms.add(p));
+        } else {
+          allPlatforms.add(mergeState.left.platform);
+        }
+      }
+      if (mergeState.right) {
+        if (mergeState.right.platform === 'unified') {
+          (mergeState.right.platforms || ['airbnb', 'booking']).forEach(p => allPlatforms.add(p));
+        } else {
+          allPlatforms.add(mergeState.right.platform);
+        }
+      }
+      const badgesContainer = document.querySelector('.merged-badges');
+      if (badgesContainer) {
+        badgesContainer.innerHTML = Array.from(allPlatforms).map(p =>
+          `<span class="platform-badge ${p}">${p.toUpperCase()}</span>`
+        ).join('');
+      }
+
+      // Auto-merge title if both are the same (case-insensitive)
+      if (mergeState.left?.title && mergeState.right?.title) {
+        const leftTitle = mergeState.left.title.trim().toLowerCase();
+        const rightTitle = mergeState.right.title.trim().toLowerCase();
+        if (leftTitle === rightTitle) {
+          mergeState.merged.title = mergeState.left.title;
+          document.getElementById('mergedTitleInput').value = mergeState.merged.title;
+        }
+      }
+
+      // Auto-merge description if both are the same (case-insensitive)
+      if (mergeState.left?.description && mergeState.right?.description) {
+        const leftDesc = mergeState.left.description.trim().toLowerCase();
+        const rightDesc = mergeState.right.description.trim().toLowerCase();
+        if (leftDesc === rightDesc) {
+          mergeState.merged.description = mergeState.left.description;
+          document.getElementById('mergedDescriptionInput').value = mergeState.merged.description;
+        }
+      }
+
+      // Auto-merge amenities that exist in both (case-insensitive match)
+      if (mergeState.left?.amenities && mergeState.right?.amenities) {
+        const leftAmenities = mergeState.left.amenities.map(a => a.trim().toLowerCase());
+        const rightAmenities = mergeState.right.amenities.map(a => a.trim().toLowerCase());
+
+        // Find matching amenities
+        for (const amenity of mergeState.left.amenities) {
+          if (rightAmenities.includes(amenity.trim().toLowerCase())) {
+            if (!mergeState.merged.amenities.includes(amenity)) {
+              mergeState.merged.amenities.push(amenity);
+            }
+          }
+        }
+
+        if (mergeState.merged.amenities.length > 0) {
+          updateMergedAmenities();
+        }
+      }
+
+      // Collect all images from both sides
+      const allImages = [];
+
+      if (mergeState.left?.images) {
+        mergeState.left.images.forEach((img, i) => {
+          allImages.push({ ...img, key: `left-${i}`, source: 'left' });
+        });
+      }
+
+      if (mergeState.right?.images) {
+        mergeState.right.images.forEach((img, i) => {
+          allImages.push({ ...img, key: `right-${i}`, source: 'right' });
+        });
+      }
+
+      if (allImages.length === 0) {
+        status.textContent = 'No images to analyze';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/images/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            images: allImages,
+            threshold: 5
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Store analyzed images with duplicate info
+          mergeState.merged.images = result.images;
+          renderAnalyzedImages();
+
+          if (result.duplicates > 0) {
+            status.innerHTML = `<span style="color: #E07912;">Found ${result.duplicates} similar image(s). Red = duplicate, Green = unique.</span>`;
+          } else {
+            status.innerHTML = `<span style="color: #008A05;">✓ All ${result.images.length} images are unique.</span>`;
+          }
+        } else {
+          status.innerHTML = `<span style="color: #C13515;">Error: ${result.error}</span>`;
+          // Fallback: just add all images without analysis
+          mergeState.merged.images = allImages;
+          updateMergedImages();
+        }
+      } catch (error) {
+        status.innerHTML = `<span style="color: #C13515;">Error: ${error.message}</span>`;
+        // Fallback: just add all images without analysis
+        mergeState.merged.images = allImages;
+        updateMergedImages();
+      }
+    }
+
+    function renderAnalyzedImages() {
+      const container = document.getElementById('mergedImages');
+      const countEl = document.getElementById('mergedImageCount');
+      const removeDupesBtn = document.getElementById('removeDupesBtn');
+
+      const uniqueCount = mergeState.merged.images.filter(img => !img.isDuplicate).length;
+      const dupeCount = mergeState.merged.images.filter(img => img.isDuplicate).length;
+
+      countEl.textContent = mergeState.merged.images.length;
+      if (removeDupesBtn) {
+        removeDupesBtn.disabled = dupeCount === 0;
+      }
+
+      container.innerHTML = mergeState.merged.images.map((img, i) => `
+        <div class="merge-image ${img.isDuplicate ? 'duplicate' : 'unique'}" onclick="toggleAnalyzedImage(${i}, this)" style="border-color: ${img.isDuplicate ? '#C13515' : '#008A05'};">
+          <img src="${img.local}" alt="Image ${i+1}" />
+          <span class="merge-image-tick" style="background: ${img.isDuplicate ? '#C13515' : '#008A05'};">
+            ${img.isDuplicate ? '✗' : '✓'}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function toggleAnalyzedImage(index, element) {
+      const img = mergeState.merged.images[index];
+      if (img) {
+        // Toggle duplicate status
+        img.isDuplicate = !img.isDuplicate;
+        renderAnalyzedImages();
+      }
+    }
+
     async function dedupeImages() {
+      // Remove all images marked as duplicates
+      mergeState.merged.images = mergeState.merged.images.filter(img => !img.isDuplicate);
+      renderAnalyzedImages();
+
+      const status = document.getElementById('dedupeStatus');
+      status.innerHTML = `<span style="color: #008A05;">✓ Duplicates removed. ${mergeState.merged.images.length} images remain.</span>`;
+      return;
+    }
+
+    async function dedupeImagesOld() {
       const btn = document.getElementById('dedupeBtn');
       const status = document.getElementById('dedupeStatus');
 
@@ -2636,12 +3178,8 @@
     }
 
     function resetMergedPanel() {
-      document.getElementById('mergedTitle').innerHTML = `
-        <div class="merge-field-content">Click a title from left or right to use it</div>
-      `;
-      document.getElementById('mergedDescription').innerHTML = `
-        <div class="merge-field-content">Select descriptions or use AI Merge</div>
-      `;
+      document.getElementById('mergedTitleInput').value = '';
+      document.getElementById('mergedDescriptionInput').value = '';
       document.getElementById('mergedAmenities').innerHTML = `
         <span style="color: #717171; font-size: 13px;">Click amenities from left or right to add</span>
       `;
@@ -2667,34 +3205,18 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title1: mergeState.left.title,
-            title2: mergeState.right.title,
             description1: mergeState.left.description,
-            description2: mergeState.right.description,
-            amenities1: mergeState.left.amenities,
-            amenities2: mergeState.right.amenities
+            description2: mergeState.right.description
           })
         });
 
         const result = await response.json();
 
         if (result.success) {
-          // Update merged fields with AI results
-          if (result.title) {
-            mergeState.merged.title = result.title;
-            document.getElementById('mergedTitle').innerHTML = `
-              <div class="merge-field-title">${result.title}</div>
-            `;
-          }
+          // Update merged description with AI result
           if (result.description) {
             mergeState.merged.description = result.description;
-            document.getElementById('mergedDescription').innerHTML = `
-              <div class="merge-field-content expanded">${result.description}</div>
-            `;
-          }
-          if (result.amenities) {
-            mergeState.merged.amenities = result.amenities;
-            updateMergedAmenities();
+            document.getElementById('mergedDescriptionInput').value = result.description;
           }
         } else {
           alert('AI merge failed: ' + (result.error || 'Unknown error'));
@@ -2733,7 +3255,7 @@
         if (result.success) {
           closeMergeModal();
           loadListings();
-          showStatus('Merged listing saved successfully!', 'success');
+          showStatus(result.updated ? 'Merged listing updated!' : 'Merged listing saved!', 'success');
         } else {
           alert('Save failed: ' + (result.error || 'Unknown error'));
         }
