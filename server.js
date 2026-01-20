@@ -390,6 +390,193 @@ app.get('/api/listings/:id/zip', async (req, res) => {
 });
 
 // ============================================
+// MERGE API
+// ============================================
+
+// AI Merge using Ollama
+app.post('/api/ai/merge', async (req, res) => {
+  const { title1, title2, description1, description2, amenities1, amenities2 } = req.body;
+
+  try {
+    // Check if Ollama is available
+    const axios = require('axios');
+
+    const prompt = `You are helping merge two property listings from different platforms (Airbnb and Booking.com) for the same property.
+
+AIRBNB LISTING:
+Title: ${title1 || 'N/A'}
+Description: ${description1 || 'N/A'}
+Amenities: ${(amenities1 || []).join(', ') || 'N/A'}
+
+BOOKING.COM LISTING:
+Title: ${title2 || 'N/A'}
+Description: ${description2 || 'N/A'}
+Amenities: ${(amenities2 || []).join(', ') || 'N/A'}
+
+Please create a merged listing with:
+1. A single best title (choose the most descriptive one or combine them)
+2. A unified description that combines the best information from both, removing duplicates, in a natural flowing style
+3. A deduplicated list of amenities (combine similar ones like "WiFi" and "Free WiFi" into one)
+
+Respond in this exact JSON format only, no other text:
+{"title": "merged title here", "description": "merged description here", "amenities": ["amenity1", "amenity2"]}`;
+
+    const response = await axios.post('http://localhost:11434/api/generate', {
+      model: 'phi3:mini',
+      prompt: prompt,
+      stream: false,
+      options: {
+        temperature: 0.7
+      }
+    }, { timeout: 120000 });
+
+    // Parse the response
+    let result;
+    try {
+      // Extract JSON from response
+      const text = response.data.response;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('No JSON found in response');
+      }
+    } catch (parseError) {
+      console.error('Parse error:', parseError, 'Response:', response.data.response);
+      return res.json({
+        success: false,
+        error: 'Failed to parse AI response'
+      });
+    }
+
+    res.json({
+      success: true,
+      title: result.title,
+      description: result.description,
+      amenities: result.amenities
+    });
+
+  } catch (error) {
+    console.error('AI merge error:', error.message);
+    res.json({
+      success: false,
+      error: error.code === 'ECONNREFUSED' ? 'Ollama is not running. Start it with: ollama serve' : error.message
+    });
+  }
+});
+
+// Save merged listing
+app.post('/api/listings/merge', async (req, res) => {
+  const { leftId, rightId, merged } = req.body;
+
+  try {
+    // Get source listings
+    let leftListing = null;
+    let rightListing = null;
+
+    if (fs.existsSync(downloadsDir)) {
+      const folders = fs.readdirSync(downloadsDir);
+
+      for (const folder of folders) {
+        const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+        if (fs.existsSync(metaPath)) {
+          const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+          if (metadata.id === leftId) leftListing = { ...metadata, folder };
+          if (metadata.id === rightId) rightListing = { ...metadata, folder };
+        }
+      }
+    }
+
+    // Create merged listing
+    const mergedId = `unified-${Date.now()}`;
+    const mergedFolder = `unified_${Date.now()}`;
+    const mergedDir = path.join(downloadsDir, mergedFolder);
+    const imagesDir = path.join(mergedDir, 'images');
+
+    fs.mkdirSync(imagesDir, { recursive: true });
+
+    // Copy images from sources
+    const mergedImages = [];
+    for (const img of (merged.images || [])) {
+      if (img.local) {
+        const sourcePath = path.join(__dirname, 'public', img.local);
+        const altSourcePath = path.join(__dirname, img.local);
+        const actualSource = fs.existsSync(sourcePath) ? sourcePath : altSourcePath;
+
+        if (fs.existsSync(actualSource)) {
+          const filename = path.basename(img.local);
+          const destPath = path.join(imagesDir, filename);
+          fs.copyFileSync(actualSource, destPath);
+          mergedImages.push({
+            local: `/downloads/${mergedFolder}/images/${filename}`,
+            original: img.original
+          });
+        } else {
+          // Keep original reference if can't copy
+          mergedImages.push(img);
+        }
+      }
+    }
+
+    // Build merged metadata
+    const mergedMetadata = {
+      id: mergedId,
+      platform: 'unified',
+      title: merged.title || 'Merged Listing',
+      description: merged.description || '',
+      amenities: merged.amenities || [],
+      images: mergedImages,
+      sources: {
+        airbnb: leftListing ? {
+          id: leftListing.id,
+          url: leftListing.sourceUrl,
+          title: leftListing.title
+        } : null,
+        booking: rightListing ? {
+          id: rightListing.id,
+          url: rightListing.sourceUrl,
+          title: rightListing.title
+        } : null
+      },
+      location: leftListing?.location || rightListing?.location || {},
+      host: leftListing?.host || rightListing?.host || {},
+      pricing: {
+        airbnb: leftListing?.pricing || null,
+        booking: rightListing?.pricing || null
+      },
+      sourceUrl: leftListing?.sourceUrl || rightListing?.sourceUrl || '',
+      folder: mergedFolder,
+      scrapedAt: new Date().toISOString(),
+      mergedAt: new Date().toISOString()
+    };
+
+    // Save metadata
+    fs.writeFileSync(
+      path.join(mergedDir, 'metadata.json'),
+      JSON.stringify(mergedMetadata, null, 2)
+    );
+
+    // Save description
+    fs.writeFileSync(
+      path.join(mergedDir, 'description.txt'),
+      merged.description || ''
+    );
+
+    res.json({
+      success: true,
+      listing: mergedMetadata
+    });
+
+  } catch (error) {
+    console.error('Merge save error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================
 // PROXY MANAGEMENT API
 // ============================================
 
