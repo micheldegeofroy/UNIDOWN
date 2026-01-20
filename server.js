@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const imghash = require('imghash');
 const { scrapeAirbnbApi, searchAirbnbApi } = require('./scrapers/airbnb-api');
 const { scrapeAirbnb, searchAirbnbProperty, proxyManager: airbnbProxyManager } = require('./scrapers/airbnb');
 const { scrapeBookingApi, closeBrowser: closeBookingBrowser } = require('./scrapers/booking-api');
@@ -390,6 +391,112 @@ app.get('/api/listings/:id/zip', async (req, res) => {
 });
 
 // ============================================
+// IMAGE DEDUPLICATION (Perceptual Hashing)
+// ============================================
+
+// Calculate hamming distance between two hashes
+function hammingDistance(hash1, hash2) {
+  if (hash1.length !== hash2.length) return Infinity;
+  let distance = 0;
+  for (let i = 0; i < hash1.length; i++) {
+    if (hash1[i] !== hash2[i]) distance++;
+  }
+  return distance;
+}
+
+// Get perceptual hash for an image
+async function getImageHash(imagePath) {
+  try {
+    // Resolve the full path
+    let fullPath = imagePath;
+    if (imagePath.startsWith('/downloads/')) {
+      fullPath = path.join(__dirname, imagePath);
+    } else if (imagePath.startsWith('downloads/')) {
+      fullPath = path.join(__dirname, imagePath);
+    } else if (!path.isAbsolute(imagePath)) {
+      fullPath = path.join(__dirname, 'public', imagePath);
+    }
+
+    if (!fs.existsSync(fullPath)) {
+      console.log('Image not found:', fullPath);
+      return null;
+    }
+
+    const hash = await imghash.hash(fullPath, 16); // 16-bit hash for good balance
+    return hash;
+  } catch (error) {
+    console.error('Hash error for', imagePath, ':', error.message);
+    return null;
+  }
+}
+
+// Deduplicate images based on perceptual hash
+async function deduplicateImages(images, threshold = 5) {
+  const uniqueImages = [];
+  const hashes = [];
+
+  for (const img of images) {
+    const imgPath = img.local || img;
+    const hash = await getImageHash(imgPath);
+
+    if (!hash) {
+      // Can't hash, keep the image anyway
+      uniqueImages.push(img);
+      continue;
+    }
+
+    // Check if this hash is similar to any existing hash
+    let isDuplicate = false;
+    for (const existingHash of hashes) {
+      const distance = hammingDistance(hash, existingHash);
+      if (distance <= threshold) {
+        isDuplicate = true;
+        console.log(`Duplicate found: distance=${distance}, threshold=${threshold}`);
+        break;
+      }
+    }
+
+    if (!isDuplicate) {
+      uniqueImages.push(img);
+      hashes.push(hash);
+    }
+  }
+
+  return uniqueImages;
+}
+
+// API endpoint to deduplicate images
+app.post('/api/images/dedupe', async (req, res) => {
+  const { images, threshold = 5 } = req.body;
+
+  if (!images || !Array.isArray(images)) {
+    return res.status(400).json({ error: 'Images array is required' });
+  }
+
+  try {
+    console.log(`Deduplicating ${images.length} images with threshold ${threshold}...`);
+    const uniqueImages = await deduplicateImages(images, threshold);
+    const removed = images.length - uniqueImages.length;
+
+    console.log(`Removed ${removed} duplicates, ${uniqueImages.length} unique images remain`);
+
+    res.json({
+      success: true,
+      original: images.length,
+      unique: uniqueImages.length,
+      removed,
+      images: uniqueImages
+    });
+  } catch (error) {
+    console.error('Dedupe error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================
 // MERGE API
 // ============================================
 
@@ -495,9 +602,14 @@ app.post('/api/listings/merge', async (req, res) => {
 
     fs.mkdirSync(imagesDir, { recursive: true });
 
+    // Deduplicate images using perceptual hashing before copying
+    console.log(`Deduplicating ${merged.images?.length || 0} images...`);
+    const uniqueImages = await deduplicateImages(merged.images || [], 5);
+    console.log(`After dedup: ${uniqueImages.length} unique images`);
+
     // Copy images from sources
     const mergedImages = [];
-    for (const img of (merged.images || [])) {
+    for (const img of uniqueImages) {
       if (img.local) {
         const sourcePath = path.join(__dirname, 'public', img.local);
         const altSourcePath = path.join(__dirname, img.local);

@@ -20,6 +20,8 @@
     "express": "^5.2.1",
     "geoip-lite": "^1.4.10",
     "https-proxy-agent": "^7.0.6",
+    "imghash": "^1.1.2",
+    "jimp": "^1.6.0",
     "node-fetch": "^3.3.2",
     "proxy-chain": "^2.7.1",
     "puppeteer": "^24.35.0",

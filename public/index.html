@@ -1578,9 +1578,15 @@
             </div>
 
             <div class="merge-section">
-              <div class="merge-section-header">Images (<span id="mergedImageCount">0</span> selected)</div>
+              <div class="merge-section-header">
+                Images (<span id="mergedImageCount">0</span> selected)
+                <button class="btn btn-small btn-outline" onclick="dedupeImages()" id="dedupeBtn" disabled>
+                  🔍 Find Duplicates
+                </button>
+              </div>
               <div class="merge-image-grid" id="mergedImages">
               </div>
+              <div id="dedupeStatus" style="font-size: 12px; color: #717171; margin-top: 8px;"></div>
             </div>
           </div>
           <div class="merge-actions">
@@ -2556,7 +2562,12 @@
     function updateMergedImages() {
       const container = document.getElementById('mergedImages');
       const countEl = document.getElementById('mergedImageCount');
+      const dedupeBtn = document.getElementById('dedupeBtn');
+      const dedupeStatus = document.getElementById('dedupeStatus');
+
       countEl.textContent = mergeState.merged.images.length;
+      dedupeBtn.disabled = mergeState.merged.images.length < 2;
+      dedupeStatus.textContent = '';
 
       if (mergeState.merged.images.length === 0) {
         container.innerHTML = '';
@@ -2566,6 +2577,47 @@
             <img src="${img.local}" alt="Merged ${i+1}" />
           </div>
         `).join('');
+      }
+    }
+
+    async function dedupeImages() {
+      const btn = document.getElementById('dedupeBtn');
+      const status = document.getElementById('dedupeStatus');
+
+      if (mergeState.merged.images.length < 2) return;
+
+      btn.disabled = true;
+      btn.textContent = '🔍 Checking...';
+      status.textContent = 'Analyzing images for duplicates...';
+
+      try {
+        const response = await fetch('/api/images/dedupe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            images: mergeState.merged.images,
+            threshold: 5
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.removed > 0) {
+            mergeState.merged.images = result.images;
+            updateMergedImages();
+            status.innerHTML = `<span style="color: #008A05;">✓ Removed ${result.removed} duplicate(s). ${result.unique} unique images remain.</span>`;
+          } else {
+            status.innerHTML = `<span style="color: #008A05;">✓ No duplicates found. All ${result.unique} images are unique.</span>`;
+          }
+        } else {
+          status.innerHTML = `<span style="color: #C13515;">Error: ${result.error}</span>`;
+        }
+      } catch (error) {
+        status.innerHTML = `<span style="color: #C13515;">Error: ${error.message}</span>`;
+      } finally {
+        btn.disabled = mergeState.merged.images.length < 2;
+        btn.textContent = '🔍 Find Duplicates';
       }
     }
 
