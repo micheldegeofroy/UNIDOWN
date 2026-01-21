@@ -3,7 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#FF385C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="UNIDOWN">
   <title>UNIDOWN - Download Your Rental Listings</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
   <style>
     * {
       box-sizing: border-box;
@@ -1605,39 +1614,651 @@
       stroke: #B0B0B0;
     }
 
+    /* ========== TABLET STYLES (768px - 1024px) ========== */
+    @media (max-width: 1024px) {
+      .listing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .merge-modal .modal-content {
+        max-width: 100%;
+        margin: 0 10px;
+        height: 95vh;
+      }
+
+      .merge-panel {
+        min-width: 0;
+      }
+
+      .merge-section-header {
+        font-size: 12px;
+      }
+
+      .merge-field-title {
+        font-size: 13px;
+      }
+
+      .merge-field-content {
+        font-size: 12px;
+      }
+    }
+
+    /* ========== PHONE/SMALL TABLET STYLES (up to 768px) ========== */
     @media (max-width: 768px) {
+      /* Navigation */
       .navbar-content {
         padding: 0 16px;
       }
 
+      .logo {
+        font-size: 1.2rem;
+      }
+
+      .logo svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      /* Container */
       .container {
+        padding: 12px;
+      }
+
+      header {
+        padding: 24px 0;
+        margin-bottom: 16px;
+      }
+
+      header h1 {
+        font-size: 1.5rem;
+      }
+
+      /* Cards */
+      .card {
         padding: 16px;
+        margin-bottom: 16px;
+        border-radius: 8px;
       }
 
-      .input-group {
-        flex-direction: column;
+      /* Buttons - larger touch targets */
+      .btn {
+        height: 44px;
+        min-width: 44px;
+        font-size: 14px;
       }
 
-      .listing-grid {
-        grid-template-columns: 1fr;
+      .btn-small {
+        height: 40px;
+        font-size: 13px;
       }
 
+      .btn-tor {
+        height: 44px;
+        width: 100%;
+        max-width: none;
+      }
+
+      /* Inputs - larger touch targets */
+      input[type="text"],
+      input[type="url"],
+      select {
+        height: 44px;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+      }
+
+      /* Tor Controls */
       .tor-controls {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .tor-toggle {
+        justify-content: space-between;
+        width: 100%;
+      }
+
+      .tor-status {
+        width: 100%;
+        justify-content: center;
       }
 
       .tor-buttons {
         margin-left: 0;
         width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      /* URL Forms */
+      .input-group {
+        flex-direction: column;
       }
 
       .add-url-form {
         flex-direction: column;
+        gap: 8px;
+      }
+
+      .add-url-form .btn-add {
+        width: 100%;
+        height: 44px;
       }
 
       .url-select-group {
         flex-direction: column;
+        gap: 8px;
+      }
+
+      .url-select-group .btn {
+        width: 100%;
+      }
+
+      /* Listing Grid */
+      .listing-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .listing-card {
+        border-radius: 8px;
+      }
+
+      .listing-image {
+        height: 200px;
+      }
+
+      .listing-info {
+        padding: 12px;
+      }
+
+      .listing-title {
+        font-size: 15px;
+      }
+
+      .listing-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .listing-actions .btn {
+        flex: 1;
+        min-width: calc(50% - 4px);
+      }
+
+      /* Modals */
+      .modal.active {
+        padding: 0;
+        align-items: stretch;
+      }
+
+      .modal-content {
+        border-radius: 0;
+        max-width: 100%;
+        min-height: 100vh;
+        margin: 0;
+      }
+
+      .modal-header {
+        padding: 16px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+      }
+
+      .modal-header h2 {
+        font-size: 16px;
+      }
+
+      .modal-close {
+        width: 40px;
+        height: 40px;
+      }
+
+      .modal-body {
+        padding: 16px;
+        max-height: none;
+      }
+
+      /* Edit Modal */
+      .edit-section {
+        margin-bottom: 16px;
+      }
+
+      .edit-input,
+      .edit-textarea {
+        font-size: 16px; /* Prevents iOS zoom */
+      }
+
+      .edit-textarea {
+        min-height: 150px;
+      }
+
+      .edit-image-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .modal-actions {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 16px;
+        border-top: 1px solid #EBEBEB;
+        display: flex;
+        gap: 8px;
+      }
+
+      .modal-actions .btn {
+        flex: 1;
+      }
+
+      /* Merge Modal - Stack panels vertically on phone */
+      .merge-modal .modal-content {
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+      }
+
+      .merge-modal .modal-body {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      .merge-panel {
+        flex: none;
+        height: auto;
+        min-height: 300px;
+        max-height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid #EBEBEB;
+      }
+
+      .merge-panel:last-child {
+        border-bottom: none;
+      }
+
+      #mergeCenterPanel {
+        order: -1; /* Move merged result to top */
+        min-height: 250px;
+      }
+
+      .merge-panel-header {
+        padding: 12px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 5;
+      }
+
+      .merge-panel-header h3 {
+        font-size: 14px;
+      }
+
+      .merge-panel-body {
+        padding: 12px;
+        padding-bottom: 60px;
+      }
+
+      .merge-section {
+        margin-bottom: 12px;
+      }
+
+      .merge-section-header {
+        font-size: 11px;
+        padding: 6px 10px;
+      }
+
+      .merge-field {
+        padding: 10px;
+      }
+
+      .merge-input,
+      .merge-textarea {
+        font-size: 16px; /* Prevents iOS zoom */
+      }
+
+      .merge-image-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .merge-image {
+        height: 60px;
+      }
+
+      .merge-actions {
+        padding: 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .merge-actions .btn {
+        flex: 1;
+        min-width: calc(50% - 4px);
+        height: 44px;
+      }
+
+      /* Amenities */
+      .merge-amenity,
+      .amenity-tag,
+      .edit-amenity {
+        font-size: 11px;
+        padding: 6px 10px;
+      }
+
+      /* Status box */
+      #status {
+        font-size: 13px;
+        padding: 12px;
+      }
+    }
+
+    /* ========== SMALL PHONE STYLES (up to 480px) ========== */
+    @media (max-width: 480px) {
+      .logo span,
+      .logo {
+        font-size: 1rem;
+      }
+
+      header h1 {
+        font-size: 1.25rem;
+      }
+
+      header p {
+        font-size: 0.875rem;
+      }
+
+      .listing-image {
+        height: 180px;
+      }
+
+      .listing-actions .btn {
+        min-width: 100%;
+        font-size: 12px;
+      }
+
+      .tor-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .edit-image-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .merge-image-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .merge-panel {
+        min-height: 250px;
+        max-height: 45vh;
+      }
+
+      .merge-actions .btn {
+        min-width: 100%;
+        font-size: 12px;
+      }
+
+      /* Hide less important text on very small screens */
+      .listing-description {
+        -webkit-line-clamp: 2;
+      }
+    }
+
+    /* ========== LANDSCAPE PHONE ========== */
+    @media (max-width: 768px) and (orientation: landscape) {
+      .merge-modal .modal-body {
+        flex-direction: row;
+      }
+
+      .merge-panel {
+        flex: 1;
+        min-height: auto;
+        max-height: none;
+        height: 100%;
+        border-right: 1px solid #EBEBEB;
+        border-bottom: none;
+      }
+
+      #mergeCenterPanel {
+        order: 0;
+      }
+
+      .listing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* ========== TABLET LANDSCAPE (1024px - 1200px) ========== */
+    @media (min-width: 769px) and (max-width: 1200px) {
+      .listing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .merge-modal .modal-content {
+        max-width: 98%;
+      }
+    }
+
+    /* ========== TOUCH DEVICE OPTIMIZATIONS ========== */
+    @media (hover: none) and (pointer: coarse) {
+      /* Larger touch targets */
+      .btn {
+        min-height: 44px;
+      }
+
+      .modal-close {
+        width: 44px;
+        height: 44px;
+      }
+
+      /* Remove hover effects that don't work on touch */
+      .btn:hover {
+        transform: none;
+      }
+
+      .listing-card:hover {
+        transform: none;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      }
+
+      /* Make scrollable areas more obvious */
+      .merge-panel-body {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .modal-body {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Tap highlight */
+      .btn,
+      .listing-card,
+      .merge-field,
+      .merge-image {
+        -webkit-tap-highlight-color: rgba(255, 56, 92, 0.1);
+      }
+    }
+
+    /* ========== iOS SAFE AREAS ========== */
+    @supports (padding: max(0px)) {
+      .navbar {
+        padding-top: max(16px, env(safe-area-inset-top));
+        padding-left: max(24px, env(safe-area-inset-left));
+        padding-right: max(24px, env(safe-area-inset-right));
+      }
+
+      .container {
+        padding-left: max(24px, env(safe-area-inset-left));
+        padding-right: max(24px, env(safe-area-inset-right));
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
+      }
+
+      .modal.active {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .merge-actions,
+      .modal-actions {
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+      }
+    }
+
+    /* ========== HIGH DPI / RETINA DISPLAYS ========== */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      .listing-image img {
+        image-rendering: -webkit-optimize-contrast;
+      }
+    }
+
+    /* ========== REDUCED MOTION ========== */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .spinner {
+        animation: none;
+      }
+    }
+
+    /* ========== DARK MODE SUPPORT ========== */
+    @media (prefers-color-scheme: dark) {
+      /* Future dark mode styles can go here */
+    }
+
+    /* ========== PWA INSTALL STYLES ========== */
+    .btn-install {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 16px;
+    }
+
+    .btn-install svg {
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 480px) {
+      .btn-install span {
+        display: none;
+      }
+
+      .btn-install {
+        width: 44px;
+        padding: 0;
+        justify-content: center;
+      }
+    }
+
+    /* Install Banner */
+    .install-banner {
+      position: fixed;
+      bottom: -100px;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 16px 24px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2000;
+      transition: bottom 0.3s ease;
+    }
+
+    .install-banner.active {
+      bottom: 0;
+    }
+
+    .install-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .install-banner-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+    }
+
+    .install-banner-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .install-banner-text strong {
+      font-size: 15px;
+      color: #222;
+    }
+
+    .install-banner-text span {
+      font-size: 13px;
+      color: #717171;
+    }
+
+    .install-banner-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    @media (max-width: 480px) {
+      .install-banner {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+      }
+
+      .install-banner-actions {
+        width: 100%;
+      }
+
+      .install-banner-actions .btn {
+        flex: 1;
+      }
+    }
+
+    @supports (padding: max(0px)) {
+      .install-banner {
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+      }
+    }
+
+    /* Update Notification */
+    .update-notification {
+      position: fixed;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 2000;
+      transition: top 0.3s ease;
+    }
+
+    .update-notification.active {
+      top: 20px;
+    }
+
+    .update-notification span {
+      font-size: 14px;
+    }
+
+    @supports (top: max(0px)) {
+      .update-notification.active {
+        top: max(20px, env(safe-area-inset-top));
       }
     }
   </style>
@@ -3578,6 +4199,179 @@
     loadListings();
     loadTorStatus();
     loadSavedUrls();
+
+    // ========== PWA Install Prompt ==========
+    let deferredPrompt = null;
+    let isAppInstalled = false;
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+      isAppInstalled = true;
+    }
+
+    // Listen for the install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+
+      // Show install button in navbar
+      if (!isAppInstalled) {
+        showInstallButton();
+      }
+    });
+
+    // Listen for successful install
+    window.addEventListener('appinstalled', () => {
+      isAppInstalled = true;
+      deferredPrompt = null;
+      hideInstallButton();
+      hideInstallBanner();
+      console.log('UNIDOWN installed successfully');
+    });
+
+    function showInstallButton() {
+      const navbar = document.querySelector('.navbar-content');
+      if (navbar && !document.getElementById('installBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'installBtn';
+        btn.className = 'btn btn-primary btn-install';
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span>Install</span>';
+        btn.onclick = promptInstall;
+        navbar.appendChild(btn);
+      }
+
+      // Show banner after 30 seconds if not dismissed
+      setTimeout(() => {
+        if (deferredPrompt && !localStorage.getItem('installBannerDismissed')) {
+          showInstallBanner();
+        }
+      }, 30000);
+    }
+
+    function hideInstallButton() {
+      const btn = document.getElementById('installBtn');
+      if (btn) btn.remove();
+    }
+
+    function showInstallBanner() {
+      if (document.getElementById('installBanner')) return;
+
+      const banner = document.createElement('div');
+      banner.id = 'installBanner';
+      banner.className = 'install-banner';
+      banner.innerHTML = `
+        <div class="install-banner-content">
+          <img src="/icons/icon-192x192.png" alt="UNIDOWN" class="install-banner-icon" />
+          <div class="install-banner-text">
+            <strong>Install UNIDOWN</strong>
+            <span>Add to your home screen for quick access</span>
+          </div>
+        </div>
+        <div class="install-banner-actions">
+          <button class="btn btn-outline btn-small" onclick="dismissInstallBanner()">Not now</button>
+          <button class="btn btn-primary btn-small" onclick="promptInstall()">Install</button>
+        </div>
+      `;
+      document.body.appendChild(banner);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        banner.classList.add('active');
+      });
+    }
+
+    function hideInstallBanner() {
+      const banner = document.getElementById('installBanner');
+      if (banner) {
+        banner.classList.remove('active');
+        setTimeout(() => banner.remove(), 300);
+      }
+    }
+
+    function dismissInstallBanner() {
+      localStorage.setItem('installBannerDismissed', 'true');
+      hideInstallBanner();
+    }
+
+    async function promptInstall() {
+      if (!deferredPrompt) {
+        // Fallback for iOS
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+          showIOSInstallInstructions();
+          return;
+        }
+        return;
+      }
+
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+
+      if (outcome === 'accepted') {
+        console.log('User accepted install');
+      }
+
+      deferredPrompt = null;
+      hideInstallBanner();
+    }
+
+    function showIOSInstallInstructions() {
+      const modal = document.createElement('div');
+      modal.className = 'modal active';
+      modal.id = 'iosInstallModal';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+          <div class="modal-header">
+            <h2>Install UNIDOWN</h2>
+            <button class="modal-close" onclick="document.getElementById('iosInstallModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="text-align: center;">
+            <img src="/icons/icon-192x192.png" alt="UNIDOWN" style="width: 80px; height: 80px; border-radius: 16px; margin-bottom: 16px;" />
+            <p style="margin-bottom: 16px;">To install UNIDOWN on your iPhone or iPad:</p>
+            <ol style="text-align: left; margin: 0 auto; max-width: 280px; line-height: 2;">
+              <li>Tap the <strong>Share</strong> button <svg style="vertical-align: middle;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></li>
+              <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+              <li>Tap <strong>"Add"</strong> to confirm</li>
+            </ol>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    // ========== Service Worker Registration ==========
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('Service Worker registered:', registration.scope);
+
+            // Check for updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New version available
+                  showUpdateNotification();
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.log('Service Worker registration failed:', error);
+          });
+      });
+    }
+
+    function showUpdateNotification() {
+      const notification = document.createElement('div');
+      notification.className = 'update-notification';
+      notification.innerHTML = `
+        <span>A new version is available!</span>
+        <button class="btn btn-small btn-primary" onclick="location.reload()">Update</button>
+      `;
+      document.body.appendChild(notification);
+      requestAnimationFrame(() => notification.classList.add('active'));
+    }
   </script>
 </body>
 </html>
