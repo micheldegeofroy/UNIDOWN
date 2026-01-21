@@ -614,6 +614,149 @@ function mergeImages(existingImages, newImages) {
   return Array.from(imageMap.values());
 }
 
+// Generate listing info text file content
+function generateListingInfoText(metadata) {
+  const lines = [];
+  const divider = '='.repeat(60);
+  const subDivider = '-'.repeat(40);
+
+  lines.push(divider);
+  lines.push('UNIDOWN - PROPERTY LISTING EXPORT');
+  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(divider);
+  lines.push('');
+
+  // Basic Info
+  lines.push('PROPERTY INFORMATION');
+  lines.push(subDivider);
+  lines.push(`Title: ${metadata.title || 'N/A'}`);
+  lines.push(`Platform: ${metadata.platform || 'N/A'}`);
+  lines.push(`Listing ID: ${metadata.id || 'N/A'}`);
+  lines.push(`Source URL: ${metadata.sourceUrl || 'N/A'}`);
+  lines.push('');
+
+  // Location
+  lines.push('LOCATION');
+  lines.push(subDivider);
+  if (metadata.location) {
+    if (metadata.location.address) lines.push(`Address: ${metadata.location.address}`);
+    if (metadata.location.city) lines.push(`City: ${metadata.location.city}`);
+    if (metadata.location.state) lines.push(`State/Region: ${metadata.location.state}`);
+    if (metadata.location.country) lines.push(`Country: ${metadata.location.country}`);
+    if (metadata.location.lat && metadata.location.lng) {
+      lines.push(`GPS Coordinates: ${metadata.location.lat}, ${metadata.location.lng}`);
+      lines.push(`Google Maps: https://www.google.com/maps?q=${metadata.location.lat},${metadata.location.lng}`);
+    }
+  } else {
+    lines.push('No location data available');
+  }
+  lines.push('');
+
+  // Property Details
+  lines.push('PROPERTY DETAILS');
+  lines.push(subDivider);
+  if (metadata.bedrooms) lines.push(`Bedrooms: ${metadata.bedrooms}`);
+  if (metadata.bathrooms) lines.push(`Bathrooms: ${metadata.bathrooms}`);
+  if (metadata.guests) lines.push(`Max Guests: ${metadata.guests}`);
+  if (metadata.propertyType) lines.push(`Property Type: ${metadata.propertyType}`);
+  if (metadata.rating) lines.push(`Rating: ${metadata.rating}`);
+  if (metadata.reviewCount) lines.push(`Reviews: ${metadata.reviewCount}`);
+  lines.push('');
+
+  // Pricing
+  if (metadata.price || metadata.pricing) {
+    lines.push('PRICING');
+    lines.push(subDivider);
+    if (metadata.price) lines.push(`Price: ${metadata.price}`);
+    if (metadata.pricing) {
+      if (metadata.pricing.basePrice) lines.push(`Base Price: ${metadata.pricing.basePrice}`);
+      if (metadata.pricing.cleaningFee) lines.push(`Cleaning Fee: ${metadata.pricing.cleaningFee}`);
+      if (metadata.pricing.serviceFee) lines.push(`Service Fee: ${metadata.pricing.serviceFee}`);
+    }
+    lines.push('');
+  }
+
+  // Host Info
+  if (metadata.host) {
+    lines.push('HOST INFORMATION');
+    lines.push(subDivider);
+    if (metadata.host.name) lines.push(`Host Name: ${metadata.host.name}`);
+    if (metadata.host.superhost) lines.push(`Superhost: Yes`);
+    if (metadata.host.responseRate) lines.push(`Response Rate: ${metadata.host.responseRate}`);
+    lines.push('');
+  }
+
+  // Description
+  lines.push('DESCRIPTION');
+  lines.push(subDivider);
+  lines.push(metadata.description || 'No description available');
+  lines.push('');
+
+  // Amenities
+  if (metadata.amenities && metadata.amenities.length > 0) {
+    lines.push('AMENITIES');
+    lines.push(subDivider);
+    metadata.amenities.forEach((amenity, i) => {
+      lines.push(`  • ${amenity}`);
+    });
+    lines.push('');
+  }
+
+  // House Rules
+  if (metadata.houseRules && metadata.houseRules.length > 0) {
+    lines.push('HOUSE RULES');
+    lines.push(subDivider);
+    metadata.houseRules.forEach(rule => {
+      lines.push(`  • ${rule}`);
+    });
+    lines.push('');
+  }
+
+  // Check-in/Check-out
+  if (metadata.checkIn || metadata.checkOut) {
+    lines.push('CHECK-IN / CHECK-OUT');
+    lines.push(subDivider);
+    if (metadata.checkIn) lines.push(`Check-in: ${metadata.checkIn}`);
+    if (metadata.checkOut) lines.push(`Check-out: ${metadata.checkOut}`);
+    lines.push('');
+  }
+
+  // Images
+  if (metadata.images && metadata.images.length > 0) {
+    lines.push('IMAGES');
+    lines.push(subDivider);
+    lines.push(`Total Images: ${metadata.images.length}`);
+    lines.push('');
+    metadata.images.forEach((img, i) => {
+      const filename = img.local ? path.basename(img.local) : `image_${i + 1}`;
+      lines.push(`  ${i + 1}. ${filename}`);
+      if (img.original) lines.push(`     Original URL: ${img.original}`);
+    });
+    lines.push('');
+  }
+
+  // Merged Sources (if unified listing)
+  if (metadata.sources || metadata.platforms) {
+    lines.push('MERGED FROM');
+    lines.push(subDivider);
+    if (metadata.platforms) {
+      lines.push(`Platforms: ${metadata.platforms.join(', ')}`);
+    }
+    if (metadata.sources) {
+      Object.entries(metadata.sources).forEach(([key, value]) => {
+        lines.push(`  ${key}: ${value}`);
+      });
+    }
+    lines.push('');
+  }
+
+  lines.push(divider);
+  lines.push('End of Export');
+  lines.push(divider);
+
+  return lines.join('\n');
+}
+
 // Download listing as ZIP
 app.get('/api/listings/:id/zip', async (req, res) => {
   const { id } = req.params;
@@ -627,7 +770,13 @@ app.get('/api/listings/:id/zip', async (req, res) => {
         const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
         if (metadata.id === id) {
           const folderPath = path.join(downloadsDir, folder);
-          const zipFileName = `${folder}.zip`;
+
+          // Create a clean filename from the title
+          const safeTitle = (metadata.title || folder)
+            .replace(/[^a-zA-Z0-9\s-]/g, '')
+            .replace(/\s+/g, '_')
+            .substring(0, 50);
+          const zipFileName = `${safeTitle}.zip`;
 
           // Set headers for ZIP download
           res.setHeader('Content-Type', 'application/zip');
@@ -644,8 +793,15 @@ app.get('/api/listings/:id/zip', async (req, res) => {
           // Pipe archive to response
           archive.pipe(res);
 
-          // Add the folder contents to the archive
-          archive.directory(folderPath, folder);
+          // Generate and add the info text file
+          const infoText = generateListingInfoText(metadata);
+          archive.append(infoText, { name: 'listing_info.txt' });
+
+          // Add images folder if it exists
+          const imagesPath = path.join(folderPath, 'images');
+          if (fs.existsSync(imagesPath)) {
+            archive.directory(imagesPath, 'images');
+          }
 
           // Finalize the archive
           await archive.finalize();
