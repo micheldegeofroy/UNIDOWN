@@ -2,10 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const imghash = require('imghash');
 const { scrapeAirbnbApi, searchAirbnbApi } = require('./scrapers/airbnb-api');
 const { scrapeAirbnb, searchAirbnbProperty, proxyManager: airbnbProxyManager } = require('./scrapers/airbnb');
 const { scrapeBookingApi, closeBrowser: closeBookingBrowser } = require('./scrapers/booking-api');
+const { scrapeVrboApi, closeBrowser: closeVrboBrowser, setTorEnabled: setVrboTorEnabled } = require('./scrapers/vrbo-api');
 const { ProxyManager } = require('./scrapers/stealth');
 
 const app = express();
@@ -43,6 +43,7 @@ app.post('/api/scrape', async (req, res) => {
 
   try {
     let result;
+    let scrapedUrl = url;
 
     if (propertyName) {
       // Search by property name
@@ -56,6 +57,7 @@ app.post('/api/scrape', async (req, res) => {
         if (searchResult.results && searchResult.results.length > 0) {
           // Scrape the first result
           const firstResult = searchResult.results[0];
+          scrapedUrl = firstResult.url;
           result = await scrapeAirbnbApi(firstResult.url);
         } else {
           throw new Error(`No results found for "${propertyName}"`);
@@ -71,21 +73,162 @@ app.post('/api/scrape', async (req, res) => {
     } else if (url.includes('booking.com')) {
       // Booking.com scrape - uses Puppeteer with stealth
       result = await scrapeBookingApi(url);
+    } else if (url.includes('vrbo.com')) {
+      // VRBO scrape - uses Puppeteer with stealth
+      result = await scrapeVrboApi(url);
     } else {
       return res.status(400).json({
-        error: 'Please provide a valid Airbnb or Booking.com listing URL.'
+        error: 'Please provide a valid Airbnb, Booking.com, or VRBO listing URL.'
       });
+    }
+
+    // Check for scraper-level errors (like bot protection)
+    if (result.success === false && result.error) {
+      return res.status(403).json(result);
+    }
+
+    // Check if a listing with the same URL already exists
+    if (result.success && scrapedUrl) {
+      const mergeResult = await mergeWithExistingListing(scrapedUrl, result);
+      if (mergeResult.merged) {
+        result.merged = true;
+        result.addedImages = mergeResult.addedImages;
+        result.addedAmenities = mergeResult.addedAmenities;
+      }
     }
 
     res.json(result);
   } catch (error) {
     console.error('Scraping error:', error);
-    res.status(500).json({
-      error: 'Failed to scrape listing',
+    const isBotProtection = error.message && error.message.includes('bot protection');
+    res.status(isBotProtection ? 403 : 500).json({
+      error: isBotProtection ? error.message : 'Failed to scrape listing',
       details: error.message
     });
   }
 });
+
+// Helper function to merge new scrape with existing listing
+async function mergeWithExistingListing(scrapedUrl, newResult) {
+  if (!fs.existsSync(downloadsDir)) return { merged: false };
+
+  const folders = fs.readdirSync(downloadsDir);
+  let existingListing = null;
+  let existingFolder = null;
+  let newFolder = null;
+
+  // Normalize URL for comparison (remove trailing slashes, query params)
+  const normalizeUrl = (url) => {
+    try {
+      const u = new URL(url);
+      return u.origin + u.pathname.replace(/\/$/, '');
+    } catch {
+      return url;
+    }
+  };
+
+  const normalizedScrapedUrl = normalizeUrl(scrapedUrl);
+
+  // Find existing listing with same URL and the new listing
+  for (const folder of folders) {
+    const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+    if (fs.existsSync(metaPath)) {
+      const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      const normalizedExistingUrl = normalizeUrl(metadata.sourceUrl || '');
+
+      if (metadata.id === newResult.id) {
+        newFolder = folder;
+      } else if (normalizedExistingUrl === normalizedScrapedUrl) {
+        existingListing = metadata;
+        existingFolder = folder;
+      }
+    }
+  }
+
+  // If no existing listing found, nothing to merge
+  if (!existingListing || !newFolder) {
+    return { merged: false };
+  }
+
+  console.log(`Found existing listing for URL, merging new content...`);
+
+  const existingMetaPath = path.join(downloadsDir, existingFolder, 'metadata.json');
+  const newMetaPath = path.join(downloadsDir, newFolder, 'metadata.json');
+  const newMetadata = JSON.parse(fs.readFileSync(newMetaPath, 'utf8'));
+
+  // Merge images (copy new images to existing folder, avoid duplicates)
+  const existingImages = existingListing.images || [];
+  const newImages = newMetadata.images || [];
+  const existingImageUrls = new Set(existingImages.map(img => img.original || img.local));
+
+  let addedImages = 0;
+  const existingImagesDir = path.join(downloadsDir, existingFolder, 'images');
+
+  for (const newImg of newImages) {
+    const imgKey = newImg.original || newImg.local;
+    if (!existingImageUrls.has(imgKey)) {
+      // Copy image file to existing folder
+      if (newImg.local) {
+        const srcPath = path.join(__dirname, newImg.local);
+        if (fs.existsSync(srcPath)) {
+          const filename = path.basename(newImg.local);
+          const destPath = path.join(existingImagesDir, filename);
+          if (!fs.existsSync(destPath)) {
+            fs.copyFileSync(srcPath, destPath);
+          }
+          existingImages.push({
+            local: `/downloads/${existingFolder}/images/${filename}`,
+            original: newImg.original
+          });
+          addedImages++;
+        }
+      }
+    }
+  }
+
+  // Merge amenities (add new ones)
+  const existingAmenities = new Set(existingListing.amenities || []);
+  const newAmenities = newMetadata.amenities || [];
+  let addedAmenities = 0;
+
+  for (const amenity of newAmenities) {
+    if (!existingAmenities.has(amenity)) {
+      existingAmenities.add(amenity);
+      addedAmenities++;
+    }
+  }
+
+  // Merge house rules
+  const existingRules = new Set(existingListing.houseRules || []);
+  const newRules = newMetadata.houseRules || [];
+  for (const rule of newRules) {
+    existingRules.add(rule);
+  }
+
+  // Update existing listing metadata
+  existingListing.images = existingImages;
+  existingListing.amenities = Array.from(existingAmenities);
+  existingListing.houseRules = Array.from(existingRules);
+  existingListing.lastUpdated = new Date().toISOString();
+
+  // Keep newer title/description if current is empty
+  if (!existingListing.title && newMetadata.title) {
+    existingListing.title = newMetadata.title;
+  }
+  if (!existingListing.description && newMetadata.description) {
+    existingListing.description = newMetadata.description;
+  }
+
+  // Save updated metadata
+  fs.writeFileSync(existingMetaPath, JSON.stringify(existingListing, null, 2));
+
+  // Delete the new folder (we merged its content)
+  fs.rmSync(path.join(downloadsDir, newFolder), { recursive: true });
+
+  console.log(`Merged ${addedImages} new images and ${addedAmenities} new amenities`);
+
+  return { merged: true, addedImages, addedAmenities };
+}
 
 // ============================================
 // SAVED URLS API
@@ -147,7 +290,7 @@ app.delete('/api/saved-urls/:id', (req, res) => {
   }
 
   let savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
-  const index = savedUrls.findIndex(item => item.id === id);
+  const index = savedUrls.findIndex(item => String(item.id) === String(id));
 
   if (index === -1) {
     return res.status(404).json({ error: 'URL not found' });
@@ -169,7 +312,7 @@ app.patch('/api/saved-urls/:id', (req, res) => {
   }
 
   let savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
-  const index = savedUrls.findIndex(item => item.id === id);
+  const index = savedUrls.findIndex(item => String(item.id) === String(id));
 
   if (index === -1) {
     return res.status(404).json({ error: 'URL not found' });
@@ -231,10 +374,10 @@ app.delete('/api/listings/:id', (req, res) => {
   res.status(404).json({ error: 'Listing not found' });
 });
 
-// Edit listing metadata (title, description, amenities, images)
+// Edit listing metadata (title, description, amenities, images, sourceUrl)
 app.patch('/api/listings/:id', (req, res) => {
   const { id } = req.params;
-  const { title, description, amenities, images } = req.body;
+  const { title, sourceUrl, description, amenities, images } = req.body;
 
   if (fs.existsSync(downloadsDir)) {
     const folders = fs.readdirSync(downloadsDir);
@@ -246,6 +389,7 @@ app.patch('/api/listings/:id', (req, res) => {
         if (metadata.id === id) {
           // Update fields
           if (title !== undefined) metadata.title = title;
+          if (sourceUrl !== undefined) metadata.sourceUrl = sourceUrl;
           if (description !== undefined) metadata.description = description;
           if (amenities !== undefined) metadata.amenities = amenities;
           if (images !== undefined) {
@@ -316,6 +460,8 @@ app.post('/api/listings/:id/update', async (req, res) => {
     let result;
     if (existingMetadata.platform === 'booking' || existingMetadata.sourceUrl.includes('booking.com')) {
       result = await scrapeBookingApi(existingMetadata.sourceUrl);
+    } else if (existingMetadata.platform === 'vrbo' || existingMetadata.sourceUrl.includes('vrbo.com')) {
+      result = await scrapeVrboApi(existingMetadata.sourceUrl);
     } else {
       result = await scrapeAirbnbApi(existingMetadata.sourceUrl);
     }
@@ -441,21 +587,59 @@ app.get('/api/listings/:id/zip', async (req, res) => {
 });
 
 // ============================================
-// IMAGE DEDUPLICATION (Perceptual Hashing)
+// CLIP IMAGE DEDUPLICATION
 // ============================================
 
-// Calculate hamming distance between two hashes
-function hammingDistance(hash1, hash2) {
-  if (hash1.length !== hash2.length) return Infinity;
-  let distance = 0;
-  for (let i = 0; i < hash1.length; i++) {
-    if (hash1[i] !== hash2[i]) distance++;
+let clipPipeline = null;
+let clipModelLoading = false;
+
+// Initialize CLIP model (lazy loading)
+async function getClipPipeline() {
+  if (clipPipeline) return clipPipeline;
+  if (clipModelLoading) {
+    // Wait for model to load
+    while (clipModelLoading) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return clipPipeline;
   }
-  return distance;
+
+  clipModelLoading = true;
+  console.log('Loading CLIP model (first time only, ~100MB download)...');
+
+  try {
+    const { pipeline } = await import('@xenova/transformers');
+    clipPipeline = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
+    console.log('CLIP model loaded successfully!');
+  } catch (error) {
+    console.error('Failed to load CLIP model:', error.message);
+    clipPipeline = null;
+  }
+
+  clipModelLoading = false;
+  return clipPipeline;
 }
 
-// Get perceptual hash for an image
-async function getImageHash(imagePath) {
+// Calculate cosine similarity between two vectors
+function cosineSimilarity(vecA, vecB) {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Get CLIP embedding for an image
+async function getImageEmbedding(imagePath) {
+  const extractor = await getClipPipeline();
+  if (!extractor) return null;
+
   try {
     // Resolve the full path
     let fullPath = imagePath;
@@ -472,80 +656,62 @@ async function getImageHash(imagePath) {
       return null;
     }
 
-    const hash = await imghash.hash(fullPath, 16); // 16-bit hash for good balance
-    return hash;
+    const result = await extractor(fullPath);
+    return Array.from(result.data);
   } catch (error) {
-    console.error('Hash error for', imagePath, ':', error.message);
+    console.error('CLIP embedding error for', imagePath, ':', error.message);
     return null;
   }
 }
 
-// Deduplicate images based on perceptual hash
-async function deduplicateImages(images, threshold = 5) {
-  const uniqueImages = [];
-  const hashes = [];
+// Analyze images for similarity using CLIP embeddings
+async function analyzeImageSimilarityCLIP(images, threshold = 0.92) {
+  const embeddings = [];
 
-  for (const img of images) {
-    const imgPath = img.local || img;
-    const hash = await getImageHash(imgPath);
+  console.log(`Computing CLIP embeddings for ${images.length} images...`);
 
-    if (!hash) {
-      // Can't hash, keep the image anyway
-      uniqueImages.push(img);
-      continue;
-    }
-
-    // Check if this hash is similar to any existing hash
-    let isDuplicate = false;
-    for (const existingHash of hashes) {
-      const distance = hammingDistance(hash, existingHash);
-      if (distance <= threshold) {
-        isDuplicate = true;
-        console.log(`Duplicate found: distance=${distance}, threshold=${threshold}`);
-        break;
-      }
-    }
-
-    if (!isDuplicate) {
-      uniqueImages.push(img);
-      hashes.push(hash);
-    }
-  }
-
-  return uniqueImages;
-}
-
-// Analyze images and return with similarity grouping
-async function analyzeImageSimilarity(images, threshold = 5) {
-  const results = [];
-  const hashes = [];
-
-  // First pass: compute all hashes
+  // Compute embeddings for all images
+  let successCount = 0;
+  let failCount = 0;
   for (let i = 0; i < images.length; i++) {
     const img = images[i];
     const imgPath = img.local || img;
-    const hash = await getImageHash(imgPath);
-    hashes.push({ index: i, hash, img });
+    console.log(`Getting embedding for image ${i}: ${imgPath}`);
+    const embedding = await getImageEmbedding(imgPath);
+    if (embedding) {
+      successCount++;
+    } else {
+      failCount++;
+      console.log(`  -> FAILED to get embedding`);
+    }
+    embeddings.push({ index: i, embedding, img });
   }
+  console.log(`Embeddings: ${successCount} success, ${failCount} failed`);
 
-  // Second pass: find similar pairs and group them
+  // Find similar pairs
   const processed = new Set();
   const groups = [];
 
-  for (let i = 0; i < hashes.length; i++) {
+  for (let i = 0; i < embeddings.length; i++) {
     if (processed.has(i)) continue;
 
-    const group = [{ ...hashes[i].img, originalIndex: i, isDuplicate: false }];
+    const group = [{ ...embeddings[i].img, originalIndex: i, isDuplicate: false }];
     processed.add(i);
 
-    if (hashes[i].hash) {
-      for (let j = i + 1; j < hashes.length; j++) {
+    if (embeddings[i].embedding) {
+      for (let j = i + 1; j < embeddings.length; j++) {
         if (processed.has(j)) continue;
-        if (!hashes[j].hash) continue;
+        if (!embeddings[j].embedding) continue;
 
-        const distance = hammingDistance(hashes[i].hash, hashes[j].hash);
-        if (distance <= threshold) {
-          group.push({ ...hashes[j].img, originalIndex: j, isDuplicate: true, similarity: distance });
+        const similarity = cosineSimilarity(embeddings[i].embedding, embeddings[j].embedding);
+        console.log(`Comparing image ${i} vs ${j}: similarity = ${similarity.toFixed(3)}`);
+        if (similarity >= threshold) {
+          group.push({
+            ...embeddings[j].img,
+            originalIndex: j,
+            isDuplicate: true,
+            similarity: similarity.toFixed(3)
+          });
           processed.add(j);
         }
       }
@@ -554,40 +720,46 @@ async function analyzeImageSimilarity(images, threshold = 5) {
     groups.push(group);
   }
 
-  // Flatten groups - first item is unique (green), rest are duplicates (red)
+  // Flatten groups - sort duplicates by similarity (highest first) so most similar are next to original
   const analyzed = [];
   for (const group of groups) {
-    for (const img of group) {
+    // First image is the original (not duplicate)
+    analyzed.push(group[0]);
+    // Sort remaining by similarity descending
+    const duplicates = group.slice(1).sort((a, b) => parseFloat(b.similarity || 0) - parseFloat(a.similarity || 0));
+    for (const img of duplicates) {
       analyzed.push(img);
     }
   }
 
+  const duplicates = analyzed.filter(img => img.isDuplicate).length;
+  console.log(`Found ${groups.length} unique images, ${duplicates} duplicates`);
+
   return {
     images: analyzed,
     groups: groups.length,
-    duplicates: analyzed.filter(img => img.isDuplicate).length
+    duplicates
   };
 }
 
-// API endpoint to analyze image similarity (for merge UI)
+// API endpoint to analyze image similarity with CLIP
 app.post('/api/images/analyze', async (req, res) => {
-  const { images, threshold = 5 } = req.body;
+  const { images, threshold = 0.92 } = req.body;
 
   if (!images || !Array.isArray(images)) {
     return res.status(400).json({ error: 'Images array is required' });
   }
 
   try {
-    console.log(`Analyzing ${images.length} images for similarity...`);
-    const result = await analyzeImageSimilarity(images, threshold);
-    console.log(`Found ${result.groups} groups, ${result.duplicates} duplicates`);
+    console.log(`Analyzing ${images.length} images with CLIP...`);
+    const result = await analyzeImageSimilarityCLIP(images, threshold);
 
     res.json({
       success: true,
       ...result
     });
   } catch (error) {
-    console.error('Analyze error:', error);
+    console.error('CLIP analyze error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -595,36 +767,8 @@ app.post('/api/images/analyze', async (req, res) => {
   }
 });
 
-// API endpoint to deduplicate images
-app.post('/api/images/dedupe', async (req, res) => {
-  const { images, threshold = 5 } = req.body;
-
-  if (!images || !Array.isArray(images)) {
-    return res.status(400).json({ error: 'Images array is required' });
-  }
-
-  try {
-    console.log(`Deduplicating ${images.length} images with threshold ${threshold}...`);
-    const uniqueImages = await deduplicateImages(images, threshold);
-    const removed = images.length - uniqueImages.length;
-
-    console.log(`Removed ${removed} duplicates, ${uniqueImages.length} unique images remain`);
-
-    res.json({
-      success: true,
-      original: images.length,
-      unique: uniqueImages.length,
-      removed,
-      images: uniqueImages
-    });
-  } catch (error) {
-    console.error('Dedupe error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// Preload CLIP model on startup (optional, comment out if you want lazy loading)
+getClipPipeline().catch(err => console.log('CLIP preload skipped:', err.message));
 
 // ============================================
 // MERGE API
@@ -740,14 +884,10 @@ app.post('/api/listings/merge', async (req, res) => {
       console.log(`Creating new unified listing: ${mergedId}`);
     }
 
-    // Deduplicate images using perceptual hashing before copying
-    console.log(`Deduplicating ${merged.images?.length || 0} images...`);
-    const uniqueImages = await deduplicateImages(merged.images || [], 5);
-    console.log(`After dedup: ${uniqueImages.length} unique images`);
-
     // Copy images from sources
     const mergedImages = [];
-    for (const img of uniqueImages) {
+    const imagesToCopy = merged.images || [];
+    for (const img of imagesToCopy) {
       if (img.local) {
         const sourcePath = path.join(__dirname, 'public', img.local);
         const altSourcePath = path.join(__dirname, img.local);
@@ -806,7 +946,7 @@ app.post('/api/listings/merge', async (req, res) => {
       amenities: merged.amenities || [],
       images: mergedImages,
       sources: newSources,
-      location: leftListing?.location || rightListing?.location || {},
+      location: merged.location || leftListing?.location || rightListing?.location || {},
       host: leftListing?.host || rightListing?.host || {},
       pricing: {
         ...(leftListing?.pricing && leftListing.platform !== 'unified' ? { [leftListing.platform]: leftListing.pricing } : {}),
@@ -977,7 +1117,7 @@ const { exec } = require('child_process');
 const net = require('net');
 
 // Tor settings state
-let torEnabled = true;
+let torEnabled = false;  // Default off - user must enable manually
 const TOR_SOCKS_PORT = 9050;
 const TOR_CONTROL_PORT = 9051;
 
@@ -1020,6 +1160,7 @@ app.post('/api/tor/toggle', async (req, res) => {
     }
 
     torEnabled = enabled;
+    setVrboTorEnabled(enabled);  // Sync VRBO scraper Tor setting
 
     // Save to settings
     const settingsPath = path.join(configDir, 'settings.json');
@@ -1255,7 +1396,7 @@ app.get('/api/settings', (req, res) => {
       randomizeFingerprint: true,
       humanDelays: true
     },
-    torEnabled: true
+    torEnabled: false  // Default off
   };
 
   if (fs.existsSync(settingsPath)) {
@@ -1263,6 +1404,7 @@ app.get('/api/settings', (req, res) => {
     // Restore Tor state from settings
     if (settings.torEnabled !== undefined) {
       torEnabled = settings.torEnabled;
+      setVrboTorEnabled(settings.torEnabled);
     }
   }
 

@@ -390,7 +390,8 @@
       background: #F7F7F7;
       border: 1px solid #EBEBEB;
       border-radius: 12px;
-      padding: 16px;
+      padding: 12px;
+      padding-bottom: 8px;
       margin-bottom: 16px;
     }
 
@@ -517,7 +518,7 @@
     .helper-text {
       font-size: 13px;
       color: #717171;
-      margin-bottom: 16px;
+      margin-bottom: 0;
       padding-left: 4px;
     }
 
@@ -1277,22 +1278,8 @@
       align-items: center;
       gap: 8px;
       background: #F7F7F7;
-    }
-
-    .merge-panel-header.airbnb {
-      background: #FFF0F1;
-    }
-
-    .merge-panel-header.booking {
-      background: #E8F4FD;
-    }
-
-    .merge-panel-header.vrbo {
-      background: #E8F8E8;
-    }
-
-    .merge-panel-header.merged {
-      background: linear-gradient(90deg, #FFF0F1 0%, #E8F4FD 100%);
+      height: 52px;
+      box-sizing: border-box;
     }
 
     .merge-panel-header h3 {
@@ -1302,6 +1289,10 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    #mergeRightHeader {
+      justify-content: flex-end;
     }
 
     .merge-panel-body {
@@ -1321,8 +1312,23 @@
       text-transform: uppercase;
       margin-bottom: 8px;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
+      gap: 8px;
+      min-height: 32px;
+    }
+
+    #mergeLeftPanel .merge-section-header {
+      justify-content: space-between;
+    }
+
+    #mergeCenterPanel .merge-section-header {
+      justify-content: flex-start;
+    }
+
+    #mergeRightPanel .merge-section-header {
+      justify-content: space-between;
+      flex-direction: row-reverse;
     }
 
     .merge-field {
@@ -1333,6 +1339,8 @@
       cursor: pointer;
       transition: all 0.2s;
       margin-bottom: 8px;
+      min-height: 44px;
+      box-sizing: border-box;
     }
 
     .merge-field:hover {
@@ -1355,9 +1363,14 @@
       font-size: 13px;
       color: #717171;
       line-height: 1.5;
-      max-height: 80px;
+      max-height: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    /* Description fields need taller min-height to align with textarea */
+    .merge-field:has(.merge-field-content) {
+      min-height: auto;
     }
 
     .merge-field-content.expanded {
@@ -1373,10 +1386,20 @@
       border-radius: 8px;
       outline: none;
       font-family: inherit;
+      min-height: 44px;
+      box-sizing: border-box;
     }
 
     .merge-input:focus {
       border-color: #222;
+    }
+
+    /* Remove double frame when merge-field contains an input */
+    .merge-field:has(.merge-input),
+    .merge-field:has(.merge-textarea) {
+      background: transparent;
+      border: none;
+      padding: 0;
     }
 
     .merge-textarea {
@@ -1563,11 +1586,6 @@
       color: white;
     }
 
-    .merged-badges {
-      display: flex;
-      gap: 6px;
-    }
-
     .empty-merge-panel {
       display: flex;
       flex-direction: column;
@@ -1639,23 +1657,20 @@
     <div class="card">
       <!-- Saved URLs Section -->
       <div class="saved-urls-section">
-        <div class="saved-urls-header">
-          <h3>Saved Properties</h3>
-        </div>
-
         <!-- Unified Scrape Input -->
         <div class="input-frame">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <span style="background: #FF385C; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">AIRBNB</span>
             <span style="background: #003580; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">BOOKING.COM</span>
+            <span style="background: #3662A8; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">VRBO</span>
           </div>
 
           <div class="add-url-form">
-            <input type="url" id="scrapeUrl" placeholder="Paste new URL or select saved property below..." />
+            <input type="text" id="scrapeUrl" placeholder="Paste URL(s) separated by commas, or select saved property below..." />
             <button class="btn btn-primary" onclick="smartScrape()" id="scrapeBtn" style="width: 100px;">Scrape</button>
           </div>
 
-          <div class="url-select-group" style="margin-top: 12px;">
+          <div class="url-select-group">
             <div class="custom-select" id="propertySelect">
               <div class="custom-select-trigger" tabindex="0" onclick="toggleDropdown()" onkeydown="handleDropdownKey(event)">
                 <span class="custom-select-placeholder">-- Or select from saved properties --</span>
@@ -1668,7 +1683,7 @@
             <button class="btn btn-outline btn-danger btn-small" onclick="deleteSelectedProperty()" id="deleteBtn" style="width: 100px;" disabled>Delete</button>
           </div>
 
-          <p class="helper-text" style="margin-top: 12px; margin-bottom: 0;">
+          <p class="helper-text" style="margin: 0;">
             <span id="inputHint">New URLs are saved automatically. Existing properties aggregate new data.</span>
           </p>
         </div>
@@ -1752,29 +1767,23 @@
         <button class="modal-close" onclick="closeMergeModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <!-- Left Panel: Airbnb -->
+        <!-- Left Panel -->
         <div class="merge-panel" id="mergeLeftPanel">
-          <div class="merge-panel-header airbnb">
-            <span class="platform-dot airbnb"></span>
-            <h3>Airbnb Source</h3>
+          <div class="merge-panel-header" id="mergeLeftHeader">
           </div>
           <div class="merge-panel-body" id="mergeLeftBody">
             <div class="empty-merge-panel">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M12 4v16m-8-8h16"/>
               </svg>
-              <p>Select an Airbnb listing<br>to merge</p>
+              <p>Select a listing<br>to merge</p>
             </div>
           </div>
         </div>
 
         <!-- Center Panel: Merged Result -->
         <div class="merge-panel" id="mergeCenterPanel">
-          <div class="merge-panel-header merged">
-            <div class="merged-badges">
-              <span class="platform-badge airbnb">AIRBNB</span>
-              <span class="platform-badge booking">BOOKING</span>
-            </div>
+          <div class="merge-panel-header" style="justify-content: center;">
             <h3>Merged Result</h3>
           </div>
           <div class="merge-panel-body" id="mergeCenterBody">
@@ -1788,12 +1797,23 @@
             <div class="merge-section">
               <div class="merge-section-header">
                 Description
-                <button class="btn btn-small btn-ai" onclick="aiMergeDescriptions()" id="aiMergeBtn" disabled>
-                  ✨ AI Merge
-                </button>
               </div>
               <div class="merge-field">
-                <textarea id="mergedDescriptionInput" class="merge-textarea" placeholder="Select a description, use AI Merge, or type your own" oninput="mergeState.merged.description = this.value"></textarea>
+                <textarea id="mergedDescriptionInput" class="merge-textarea" placeholder="Select a description, use Text Merge, or type your own" oninput="mergeState.merged.description = this.value"></textarea>
+              </div>
+            </div>
+
+            <div class="merge-section">
+              <div class="merge-section-header">Location</div>
+              <div class="merge-field">
+                <input type="text" id="mergedLocationInput" class="merge-input" placeholder="Click a location from left/right or type your own" oninput="mergeState.merged.locationText = this.value" />
+              </div>
+            </div>
+
+            <div class="merge-section">
+              <div class="merge-section-header">GPS</div>
+              <div class="merge-field">
+                <input type="text" id="mergedGpsInput" class="merge-input" placeholder="Click GPS from left/right or type lat, lng" oninput="mergeState.merged.gpsText = this.value" />
               </div>
             </div>
 
@@ -1813,23 +1833,21 @@
           </div>
           <div class="merge-actions">
             <button class="btn btn-outline" onclick="closeMergeModal()">Cancel</button>
-            <button class="btn btn-outline btn-danger" onclick="dedupeImages()" id="removeDupesBtn" style="width: 150px;">Remove Duplicates</button>
+            <button class="btn btn-primary" onclick="aiMergeDescriptions()" id="aiMergeBtn" disabled style="width: 150px;">✨ Text Merge</button>
             <button class="btn btn-primary" onclick="saveMergedListing()" id="saveMergeBtn" style="width: 150px;">Save Merged</button>
           </div>
         </div>
 
-        <!-- Right Panel: Booking -->
+        <!-- Right Panel -->
         <div class="merge-panel" id="mergeRightPanel">
-          <div class="merge-panel-header booking">
-            <span class="platform-dot booking"></span>
-            <h3>Booking.com Source</h3>
+          <div class="merge-panel-header" id="mergeRightHeader">
           </div>
           <div class="merge-panel-body" id="mergeRightBody">
             <div class="empty-merge-panel">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M12 4v16m-8-8h16"/>
               </svg>
-              <p>Select a Booking.com listing<br>to merge</p>
+              <p>Select a listing<br>to merge</p>
             </div>
           </div>
         </div>
@@ -2001,81 +2019,114 @@
     async function smartScrape() {
       const urlInput = document.getElementById('scrapeUrl');
       const scrapeBtn = document.getElementById('scrapeBtn');
-      const url = urlInput.value.trim();
+      const inputValue = urlInput.value.trim();
 
-      if (!url) {
+      if (!inputValue) {
         showStatus('Please enter a URL or select from saved properties', 'error');
         return;
       }
 
-      const isAirbnb = url.includes('airbnb.com');
-      const isBooking = url.includes('booking.com');
+      // Split by comma to support batch scraping
+      const urls = inputValue.split(',').map(u => u.trim()).filter(u => u.length > 0);
 
-      if (!isAirbnb && !isBooking) {
-        showStatus('Please enter a valid Airbnb or Booking.com URL', 'error');
+      // Validate all URLs first
+      const invalidUrls = [];
+      for (const url of urls) {
+        const isAirbnb = url.includes('airbnb.com');
+        const isBooking = url.includes('booking.com');
+        const isVrbo = url.includes('vrbo.com');
+        if (!isAirbnb && !isBooking && !isVrbo) {
+          invalidUrls.push(url);
+        }
+      }
+
+      if (invalidUrls.length > 0) {
+        showStatus(`Invalid URL(s): ${invalidUrls.length > 1 ? invalidUrls.length + ' URLs are' : 'URL is'} not Airbnb, Booking.com, or VRBO`, 'error');
         return;
       }
 
-      const platform = isAirbnb ? 'Airbnb' : 'Booking.com';
-
-      // Check if URL already exists in saved properties
-      const existingProperty = savedUrls.find(s => s.url === url);
-      const isUpdate = !!existingProperty;
-
       scrapeBtn.disabled = true;
-      scrapeBtn.textContent = 'Scraping...';
+      const totalUrls = urls.length;
+      let successCount = 0;
+      let failCount = 0;
 
-      if (isUpdate) {
-        showStatus(`<span class="spinner"></span>Re-scraping "${existingProperty.name}" to aggregate new data...`, 'loading');
-      } else {
-        showStatus(`<span class="spinner"></span>Scraping new ${platform} listing...`, 'loading');
-      }
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        const isAirbnb = url.includes('airbnb.com');
+        const isBooking = url.includes('booking.com');
+        const isVrbo = url.includes('vrbo.com');
+        const platform = isAirbnb ? 'Airbnb' : isBooking ? 'Booking.com' : 'VRBO';
 
-      try {
-        const response = await fetch('/api/scrape', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        });
+        // Check if URL already exists in saved properties
+        const existingProperty = savedUrls.find(s => s.url === url);
+        const isUpdate = !!existingProperty;
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || result.details || 'Failed to scrape listing');
-        }
-
-        const listing = result.data || result;
-        const imageCount = listing.images ? listing.images.length : 0;
-        const title = listing.title || platform + ' listing';
-
-        // If new property, save it to the list
-        if (!isUpdate) {
-          await savePropertyUrl(url, title);
-        } else {
-          // Update the name if it was a placeholder
-          if (existingProperty.name.startsWith('Airbnb #') || existingProperty.name.startsWith('Booking:')) {
-            await updateSavedUrlName(existingProperty.id, title);
-          }
-        }
+        const progress = totalUrls > 1 ? `[${i + 1}/${totalUrls}] ` : '';
+        scrapeBtn.textContent = totalUrls > 1 ? `${i + 1}/${totalUrls}` : 'Scraping...';
 
         if (isUpdate) {
-          showStatus(`Updated "${title}" - ${imageCount} images (new data aggregated)`, 'success');
+          showStatus(`<span class="spinner"></span>${progress}Re-scraping "${existingProperty.name}"...`, 'loading');
         } else {
-          showStatus(`Saved "${title}" with ${imageCount} images!`, 'success');
+          showStatus(`<span class="spinner"></span>${progress}Scraping new ${platform} listing...`, 'loading');
         }
 
-        urlInput.value = '';
-        clearDropdownSelection();
-        document.getElementById('deleteBtn').disabled = true;
-        document.getElementById('inputHint').innerHTML = 'New URLs are saved automatically. Existing properties aggregate new data.';
-        loadListings();
-        loadSavedUrls();
-      } catch (error) {
-        showStatus(`${platform} scrape failed: ` + error.message, 'error');
-      } finally {
-        scrapeBtn.disabled = false;
-        scrapeBtn.textContent = 'Scrape';
+        try {
+          const response = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || result.details || 'Failed to scrape listing');
+          }
+
+          const listing = result.data || result;
+          const title = listing.title || platform + ' listing';
+
+          // If new property, save it to the list
+          if (!isUpdate) {
+            await savePropertyUrl(url, title);
+          } else {
+            // Update the name if it was a placeholder
+            if (existingProperty.name.startsWith('Airbnb #') || existingProperty.name.startsWith('Booking:')) {
+              await updateSavedUrlName(existingProperty.id, title);
+            }
+          }
+
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to scrape ${url}:`, error.message);
+          failCount++;
+        }
       }
+
+      // Final status
+      if (totalUrls === 1) {
+        if (successCount === 1) {
+          showStatus('Scrape completed successfully!', 'success');
+        } else {
+          showStatus('Scrape failed', 'error');
+        }
+      } else {
+        if (failCount === 0) {
+          showStatus(`Batch complete: ${successCount} listings scraped successfully!`, 'success');
+        } else {
+          showStatus(`Batch complete: ${successCount} succeeded, ${failCount} failed`, failCount > successCount ? 'error' : 'success');
+        }
+      }
+
+      urlInput.value = '';
+      clearDropdownSelection();
+      document.getElementById('deleteBtn').disabled = true;
+      document.getElementById('inputHint').innerHTML = 'New URLs are saved automatically. Existing properties aggregate new data.';
+      loadListings();
+      loadSavedUrls();
+
+      scrapeBtn.disabled = false;
+      scrapeBtn.textContent = 'Scrape';
     }
 
     async function savePropertyUrl(url, name) {
@@ -2095,6 +2146,8 @@
         return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FF385C;margin-right:6px;"></span>';
       } else if (url.includes('booking.com')) {
         return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#003580;margin-right:6px;"></span>';
+      } else if (url.includes('vrbo.com')) {
+        return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3662d8;margin-right:6px;"></span>';
       }
       return '';
     }
@@ -2245,7 +2298,7 @@
             <div class="listing-card">
               <div class="listing-images" id="images-${listing.id}">
                 ${listing.images.length > 0
-                  ? `<img src="${listing.images[0].local}" alt="${listing.title}" id="img-${listing.id}" onclick="viewDetails('${listing.id}')" style="cursor:pointer;" />`
+                  ? `<img src="${listing.images[0].local}" alt="${listing.title}" id="img-${listing.id}" onclick="openEditModal('${listing.id}')" style="cursor:pointer;" />`
                   : '<div style="background:#eee;height:100%;display:flex;align-items:center;justify-content:center;color:#999;">No images</div>'
                 }
                 ${listing.images.length > 1 ? `
@@ -2285,7 +2338,6 @@
                     <span class="listing-date">Scraped: ${new Date(listing.scrapedAt).toLocaleDateString()} ${new Date(listing.scrapedAt).toLocaleTimeString()}</span>
                   </div>
                   <div class="listing-actions">
-                    <button class="btn btn-outline btn-small" onclick="openEditModal('${listing.id}')">Edit</button>
                     <button class="btn btn-outline btn-small" onclick="openMergeModal('${listing.id}')">Merge</button>
                     <a href="/api/listings/${listing.id}/zip" class="btn btn-outline btn-small" download>Download</a>
                     <button class="btn btn-outline btn-small" onclick="updateListing('${listing.id}')" id="updateBtn-${listing.id}">Update</button>
@@ -2385,6 +2437,7 @@
     let editState = {
       id: null,
       title: '',
+      sourceUrl: '',
       description: '',
       amenities: [],
       images: []
@@ -2397,6 +2450,7 @@
       editState = {
         id: listing.id,
         title: listing.title || '',
+        sourceUrl: listing.sourceUrl || '',
         description: listing.description || '',
         amenities: [...(listing.amenities || [])],
         images: [...(listing.images || [])]
@@ -2416,6 +2470,11 @@
         <div class="edit-section">
           <label>Title</label>
           <input type="text" class="edit-input" value="${editState.title.replace(/"/g, '&quot;')}" oninput="editState.title = this.value" />
+        </div>
+
+        <div class="edit-section">
+          <label>Source URL</label>
+          <input type="text" class="edit-input" value="${editState.sourceUrl.replace(/"/g, '&quot;')}" oninput="editState.sourceUrl = this.value" />
         </div>
 
         <div class="edit-section">
@@ -2488,6 +2547,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: editState.title,
+            sourceUrl: editState.sourceUrl,
             description: editState.description,
             amenities: editState.amenities,
             images: editState.images
@@ -2555,12 +2615,12 @@
         // Update dropdown to show selected
         selectDropdownOption(existing.url);
         deleteBtn.disabled = false;
-      } else if (url.includes('airbnb.com') || url.includes('booking.com')) {
+      } else if (url.includes('airbnb.com') || url.includes('booking.com') || url.includes('vrbo.com')) {
         hint.innerHTML = `${dot}New property - will be saved after scraping`;
         clearDropdownSelection();
         deleteBtn.disabled = true;
       } else {
-        hint.innerHTML = 'Enter a valid Airbnb or Booking.com URL';
+        hint.innerHTML = 'Enter a valid Airbnb, Booking.com, or VRBO URL';
         clearDropdownSelection();
         deleteBtn.disabled = true;
       }
@@ -2722,24 +2782,62 @@
       }
     };
 
+    // Helper to render platform badge (global for reuse)
+    function getPlatformBadge(listing) {
+      if (listing.platform === 'unified') {
+        return `<span style="display:inline-flex;gap:3px;margin-right:4px;">${(listing.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:9px;padding:1px 4px;">${p.toUpperCase()}</span>`).join('')}</span>`;
+      }
+      return `<span class="listing-platform ${listing.platform}" style="font-size:9px;padding:1px 4px;margin-right:4px;">${listing.platform.toUpperCase()}</span>`;
+    }
+
+    // Refresh listing options on one side, excluding the listing selected on the other side
+    function refreshPanelListings(side) {
+      const otherSide = side === 'left' ? 'right' : 'left';
+      const excludeId = mergeState[otherSide]?.id;
+      const availableListings = excludeId
+        ? currentListings.filter(l => l.id !== excludeId)
+        : currentListings;
+
+      const bodyId = side === 'left' ? 'mergeLeftBody' : 'mergeRightBody';
+      const body = document.getElementById(bodyId);
+
+      if (availableListings.length === 0) {
+        body.innerHTML = `<div class="empty-merge-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m-8-8h16"/></svg>
+          <p>No listings available</p>
+        </div>`;
+      } else {
+        body.innerHTML = `
+          <div class="merge-section">
+            <div class="merge-section-header">Select Listing</div>
+            ${availableListings.map(l => `
+              <div class="merge-field" onclick="selectMergeSource('${side}', '${l.id}')">
+                <div class="merge-field-title">${getPlatformBadge(l)}${l.title || 'Untitled'}</div>
+                <div class="merge-field-content">${(l.description || '').substring(0, 100)}...</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
     function openMergeModal(preselectedId = null) {
       // Reset merge state
       mergeState = {
         left: null,
         right: null,
-        merged: { title: '', description: '', amenities: [], images: [], sources: {} }
+        merged: { title: '', description: '', location: null, locationText: '', gpsText: '', amenities: [], images: [], sources: {} }
       };
 
       // Find preselected listing
       const preselected = preselectedId ? currentListings.find(l => l.id === preselectedId) : null;
 
-      // Get listings by platform (unified goes with airbnb on left)
-      const leftListings = currentListings.filter(l => l.platform === 'airbnb' || l.platform === 'unified');
-      const rightListings = currentListings.filter(l => l.platform === 'booking' || l.platform === 'unified');
+      // All listings available for both panels
+      const allListings = currentListings;
 
-      // Populate left panel with listings selector
+      // Populate left panel with all listings
       const leftBody = document.getElementById('mergeLeftBody');
-      if (leftListings.length === 0) {
+      if (allListings.length === 0) {
         leftBody.innerHTML = `<div class="empty-merge-panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m-8-8h16"/></svg>
           <p>No listings available</p>
@@ -2748,12 +2846,9 @@
         leftBody.innerHTML = `
           <div class="merge-section">
             <div class="merge-section-header">Select Listing</div>
-            ${leftListings.map(l => `
+            ${allListings.map(l => `
               <div class="merge-field" onclick="selectMergeSource('left', '${l.id}')">
-                <div class="merge-field-title">${l.platform === 'unified'
-                  ? `<span style="display:inline-flex;gap:3px;margin-right:4px;">${(l.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:9px;padding:1px 4px;">${p.toUpperCase()}</span>`).join('')}</span>`
-                  : ''
-                }${l.title || 'Untitled'}</div>
+                <div class="merge-field-title">${getPlatformBadge(l)}${l.title || 'Untitled'}</div>
                 <div class="merge-field-content">${(l.description || '').substring(0, 100)}...</div>
               </div>
             `).join('')}
@@ -2761,9 +2856,9 @@
         `;
       }
 
-      // Populate right panel with listings selector
+      // Populate right panel with all listings
       const rightBody = document.getElementById('mergeRightBody');
-      if (rightListings.length === 0) {
+      if (allListings.length === 0) {
         rightBody.innerHTML = `<div class="empty-merge-panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m-8-8h16"/></svg>
           <p>No listings available</p>
@@ -2772,12 +2867,9 @@
         rightBody.innerHTML = `
           <div class="merge-section">
             <div class="merge-section-header">Select Listing</div>
-            ${rightListings.map(l => `
+            ${allListings.map(l => `
               <div class="merge-field" onclick="selectMergeSource('right', '${l.id}')">
-                <div class="merge-field-title">${l.platform === 'unified'
-                  ? `<span style="display:inline-flex;gap:3px;margin-right:4px;">${(l.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:9px;padding:1px 4px;">${p.toUpperCase()}</span>`).join('')}</span>`
-                  : ''
-                }${l.title || 'Untitled'}</div>
+                <div class="merge-field-title">${getPlatformBadge(l)}${l.title || 'Untitled'}</div>
                 <div class="merge-field-content">${(l.description || '').substring(0, 100)}...</div>
               </div>
             `).join('')}
@@ -2790,13 +2882,9 @@
 
       document.getElementById('mergeModal').classList.add('active');
 
-      // Auto-select preselected listing based on platform
+      // Auto-select preselected listing on left panel
       if (preselected) {
-        if (preselected.platform === 'airbnb' || preselected.platform === 'unified') {
-          selectMergeSource('left', preselectedId);
-        } else if (preselected.platform === 'booking') {
-          selectMergeSource('right', preselectedId);
-        }
+        selectMergeSource('left', preselectedId);
       }
     }
 
@@ -2810,15 +2898,24 @@
 
       mergeState[side] = listing;
 
+      // Update panel header with platform
+      const headerId = side === 'left' ? 'mergeLeftHeader' : 'mergeRightHeader';
+      const header = document.getElementById(headerId);
+      const platformBadge = listing.platform === 'unified'
+        ? (listing.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:10px;padding:2px 6px;">${p.toUpperCase()}</span>`).join(' ')
+        : `<span class="listing-platform ${listing.platform}" style="font-size:10px;padding:2px 6px;">${listing.platform.toUpperCase()}</span>`;
+      header.innerHTML = `${platformBadge}<h3 style="margin-left:8px;">${listing.title?.substring(0, 25) || 'Selected'}${listing.title?.length > 25 ? '...' : ''}</h3>`;
+
       // Update panel to show selected listing details
       const bodyId = side === 'left' ? 'mergeLeftBody' : 'mergeRightBody';
       const body = document.getElementById(bodyId);
+      const arrow = side === 'left' ? '→' : '←';
 
       body.innerHTML = `
         <div class="merge-section">
           <div class="merge-section-header">
             Title
-            <span class="merge-arrow" onclick="addToMerged('title', '${side}')">→</span>
+            <span class="merge-arrow" onclick="addToMerged('title', '${side}')">${arrow}</span>
           </div>
           <div class="merge-field">
             <div class="merge-field-title">${listing.title || 'Untitled'}</div>
@@ -2828,10 +2925,30 @@
         <div class="merge-section">
           <div class="merge-section-header">
             Description
-            <span class="merge-arrow" onclick="addToMerged('description', '${side}')">→</span>
+            <span class="merge-arrow" onclick="addToMerged('description', '${side}')">${arrow}</span>
           </div>
           <div class="merge-field">
             <div class="merge-field-content">${listing.description || 'No description'}</div>
+          </div>
+        </div>
+
+        <div class="merge-section">
+          <div class="merge-section-header">
+            Location
+            <span class="merge-arrow" onclick="addToMerged('location', '${side}')">${arrow}</span>
+          </div>
+          <div class="merge-field">
+            <div class="merge-field-content">${listing.location ? [listing.location.city, listing.location.state, listing.location.country].filter(Boolean).join(', ') || 'No location' : 'No location'}</div>
+          </div>
+        </div>
+
+        <div class="merge-section">
+          <div class="merge-section-header">
+            GPS
+            <span class="merge-arrow" onclick="addToMerged('gps', '${side}')">${arrow}</span>
+          </div>
+          <div class="merge-field">
+            <div class="merge-field-content">${listing.location?.lat && listing.location?.lng ? `${listing.location.lat}, ${listing.location.lng}` : 'No coordinates'}</div>
           </div>
         </div>
 
@@ -2855,10 +2972,13 @@
           </div>
         </div>
 
-        <div style="margin-top: 16px;">
-          <button class="btn btn-outline btn-small" onclick="openMergeModal()">← Change Selection</button>
-        </div>
       `;
+
+      // Refresh the opposite panel to exclude the selected listing
+      const otherSide = side === 'left' ? 'right' : 'left';
+      if (!mergeState[otherSide]) {
+        refreshPanelListings(otherSide);
+      }
 
       // Enable AI merge if both sides selected
       updateAIMergeButton();
@@ -2879,6 +2999,20 @@
       } else if (field === 'description') {
         mergeState.merged.description = listing.description || '';
         document.getElementById('mergedDescriptionInput').value = mergeState.merged.description;
+      } else if (field === 'location') {
+        mergeState.merged.location = listing.location || null;
+        const locationText = listing.location ? [listing.location.city, listing.location.state, listing.location.country].filter(Boolean).join(', ') : '';
+        mergeState.merged.locationText = locationText;
+        document.getElementById('mergedLocationInput').value = locationText;
+      } else if (field === 'gps') {
+        if (!mergeState.merged.location) {
+          mergeState.merged.location = {};
+        }
+        mergeState.merged.location.lat = listing.location?.lat || null;
+        mergeState.merged.location.lng = listing.location?.lng || null;
+        const gpsText = listing.location?.lat && listing.location?.lng ? `${listing.location.lat}, ${listing.location.lng}` : '';
+        mergeState.merged.gpsText = gpsText;
+        document.getElementById('mergedGpsInput').value = gpsText;
       }
     }
 
@@ -2961,29 +3095,6 @@
     async function autoMergeAndAnalyzeImages() {
       const status = document.getElementById('dedupeStatus');
       status.textContent = 'Analyzing all images for duplicates...';
-
-      // Update merged panel header badges based on platforms being merged
-      const allPlatforms = new Set();
-      if (mergeState.left) {
-        if (mergeState.left.platform === 'unified') {
-          (mergeState.left.platforms || ['airbnb', 'booking']).forEach(p => allPlatforms.add(p));
-        } else {
-          allPlatforms.add(mergeState.left.platform);
-        }
-      }
-      if (mergeState.right) {
-        if (mergeState.right.platform === 'unified') {
-          (mergeState.right.platforms || ['airbnb', 'booking']).forEach(p => allPlatforms.add(p));
-        } else {
-          allPlatforms.add(mergeState.right.platform);
-        }
-      }
-      const badgesContainer = document.querySelector('.merged-badges');
-      if (badgesContainer) {
-        badgesContainer.innerHTML = Array.from(allPlatforms).map(p =>
-          `<span class="platform-badge ${p}">${p.toUpperCase()}</span>`
-        ).join('');
-      }
 
       // Auto-merge title if both are the same (case-insensitive)
       if (mergeState.left?.title && mergeState.right?.title) {
@@ -3083,15 +3194,11 @@
     function renderAnalyzedImages() {
       const container = document.getElementById('mergedImages');
       const countEl = document.getElementById('mergedImageCount');
-      const removeDupesBtn = document.getElementById('removeDupesBtn');
 
       const uniqueCount = mergeState.merged.images.filter(img => !img.isDuplicate).length;
       const dupeCount = mergeState.merged.images.filter(img => img.isDuplicate).length;
 
       countEl.textContent = mergeState.merged.images.length;
-      if (removeDupesBtn) {
-        removeDupesBtn.disabled = dupeCount === 0;
-      }
 
       container.innerHTML = mergeState.merged.images.map((img, i) => `
         <div class="merge-image ${img.isDuplicate ? 'duplicate' : 'unique'}" onclick="toggleAnalyzedImage(${i}, this)" style="border-color: ${img.isDuplicate ? '#C13515' : '#008A05'};">
@@ -3180,6 +3287,8 @@
     function resetMergedPanel() {
       document.getElementById('mergedTitleInput').value = '';
       document.getElementById('mergedDescriptionInput').value = '';
+      document.getElementById('mergedLocationInput').value = '';
+      document.getElementById('mergedGpsInput').value = '';
       document.getElementById('mergedAmenities').innerHTML = `
         <span style="color: #717171; font-size: 13px;">Click amenities from left or right to add</span>
       `;
@@ -3198,7 +3307,7 @@
 
       const btn = document.getElementById('aiMergeBtn');
       btn.disabled = true;
-      btn.textContent = '✨ Merging...';
+      btn.textContent = '✨ Merging';
 
       try {
         const response = await fetch('/api/ai/merge', {
@@ -3225,7 +3334,7 @@
         alert('AI merge error: ' + error.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = '✨ AI Merge';
+        btn.textContent = '✨ Text Merge';
       }
     }
 
