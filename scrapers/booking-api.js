@@ -359,8 +359,13 @@ function extractPropertyDetails(html) {
 /**
  * Main scraping function for Booking.com
  */
-async function scrapeBookingApi(url) {
-  console.log('Scraping Booking.com:', url);
+async function scrapeBookingApi(url, onProgress = null) {
+  const progress = (msg) => {
+    console.log(msg);
+    if (onProgress) onProgress(msg);
+  };
+
+  progress('Scraping Booking.com: ' + url);
 
   // Ensure URL is properly formatted
   if (!url.startsWith('http')) {
@@ -368,7 +373,7 @@ async function scrapeBookingApi(url) {
   }
 
   const propertyId = extractPropertyId(url);
-  console.log('Property ID:', propertyId);
+  progress('Property ID: ' + propertyId);
 
   // Get browser and create page
   const browser = await getBrowser();
@@ -385,7 +390,7 @@ async function scrapeBookingApi(url) {
     });
 
     // Navigate to page with retry logic
-    console.log('Navigating to page...');
+    progress('Navigating to page...');
     let navigationSuccess = false;
     let attempts = 0;
     const maxAttempts = 3;
@@ -406,7 +411,7 @@ async function scrapeBookingApi(url) {
     }
 
     // Wait for page to stabilize (handle potential redirects)
-    console.log('Waiting for page to stabilize...');
+    progress('Waiting for page to stabilize...');
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Try to dismiss cookie consent if present
@@ -554,12 +559,12 @@ async function scrapeBookingApi(url) {
 
     // Download images
     const downloadedImages = [];
-    console.log(`Found ${data.images.length} images to download`);
+    progress(`Found ${data.images.length} images to download`);
 
     for (let i = 0; i < data.images.length; i++) {
       try {
         const imgUrl = data.images[i];
-        console.log(`Downloading image ${i + 1}/${data.images.length}: ${imgUrl.substring(0, 80)}...`);
+        progress(`Downloading image ${i + 1}/${data.images.length}...`);
         const imgResponse = await downloadImage(imgUrl);
 
         if (imgResponse.status === 200 && imgResponse.buffer.length > 1000) {

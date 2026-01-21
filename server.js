@@ -31,6 +31,38 @@ if (!fs.existsSync(configDir)) {
 }
 
 // ============================================
+// SCRAPING PROGRESS (SSE)
+// ============================================
+
+let scrapeProgress = { message: '', timestamp: 0 };
+let scrapeProgressClients = [];
+
+function updateScrapeProgress(message) {
+  scrapeProgress = { message, timestamp: Date.now() };
+  // Send to all connected SSE clients
+  scrapeProgressClients.forEach(client => {
+    client.write(`data: ${JSON.stringify(scrapeProgress)}\n\n`);
+  });
+}
+
+app.get('/api/scrape/progress', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // Send current progress immediately
+  res.write(`data: ${JSON.stringify(scrapeProgress)}\n\n`);
+
+  // Add client to list
+  scrapeProgressClients.push(res);
+
+  // Remove client on disconnect
+  req.on('close', () => {
+    scrapeProgressClients = scrapeProgressClients.filter(client => client !== res);
+  });
+});
+
+// ============================================
 // SCRAPING API
 // ============================================
 
@@ -48,6 +80,7 @@ app.post('/api/scrape', async (req, res) => {
     if (propertyName) {
       // Search by property name
       console.log(`Searching for property: ${propertyName}`);
+      updateScrapeProgress(`Searching for "${propertyName}"...`);
       if (useBrowser) {
         // Use browser-based search (slower, may be blocked)
         result = await searchAirbnbProperty(propertyName);
@@ -58,6 +91,7 @@ app.post('/api/scrape', async (req, res) => {
           // Scrape the first result
           const firstResult = searchResult.results[0];
           scrapedUrl = firstResult.url;
+          updateScrapeProgress(`Found property, scraping Airbnb...`);
           result = await scrapeAirbnbApi(firstResult.url);
         } else {
           throw new Error(`No results found for "${propertyName}"`);
@@ -65,6 +99,7 @@ app.post('/api/scrape', async (req, res) => {
       }
     } else if (url.includes('airbnb.com')) {
       // Direct URL scrape - use API by default
+      updateScrapeProgress('Connecting to Airbnb...');
       if (useBrowser) {
         result = await scrapeAirbnb(url);
       } else {
@@ -72,10 +107,12 @@ app.post('/api/scrape', async (req, res) => {
       }
     } else if (url.includes('booking.com')) {
       // Booking.com scrape - uses Puppeteer with stealth
-      result = await scrapeBookingApi(url);
+      updateScrapeProgress('Launching browser for Booking.com...');
+      result = await scrapeBookingApi(url, updateScrapeProgress);
     } else if (url.includes('vrbo.com')) {
       // VRBO scrape - uses Puppeteer with stealth
-      result = await scrapeVrboApi(url);
+      updateScrapeProgress('Launching browser for VRBO...');
+      result = await scrapeVrboApi(url, updateScrapeProgress);
     } else {
       return res.status(400).json({
         error: 'Please provide a valid Airbnb, Booking.com, or VRBO listing URL.'
@@ -374,23 +411,56 @@ app.delete('/api/listings/:id', (req, res) => {
   res.status(404).json({ error: 'Listing not found' });
 });
 
-// Edit listing metadata (title, description, amenities, images, sourceUrl)
+// Edit listing metadata (title, description, amenities, images, sourceUrl, location, gps)
 app.patch('/api/listings/:id', (req, res) => {
   const { id } = req.params;
-  const { title, sourceUrl, description, amenities, images } = req.body;
+  const { title, sourceUrl, description, location, gps, amenities, images } = req.body;
+
+  console.log('PATCH /api/listings/:id - Looking for listing:', id);
+  console.log('Received sourceUrl:', sourceUrl);
 
   if (fs.existsSync(downloadsDir)) {
     const folders = fs.readdirSync(downloadsDir);
+    console.log('Searching through', folders.length, 'folders');
 
     for (const folder of folders) {
       const metaPath = path.join(downloadsDir, folder, 'metadata.json');
       if (fs.existsSync(metaPath)) {
         const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
         if (metadata.id === id) {
+          console.log('Found listing:', metadata.id, 'in folder:', folder);
+          console.log('Old sourceUrl:', metadata.sourceUrl);
           // Update fields
           if (title !== undefined) metadata.title = title;
-          if (sourceUrl !== undefined) metadata.sourceUrl = sourceUrl;
+          if (sourceUrl !== undefined) {
+            console.log('Updating sourceUrl to:', sourceUrl);
+            metadata.sourceUrl = sourceUrl;
+          }
+          console.log('New sourceUrl:', metadata.sourceUrl);
           if (description !== undefined) metadata.description = description;
+
+          // Update location if provided
+          if (location !== undefined) {
+            // Initialize location object if it doesn't exist
+            if (!metadata.location) metadata.location = {};
+            // Parse location string "Address, City, Country"
+            const parts = location.split(',').map(p => p.trim());
+            if (parts.length >= 1) metadata.location.address = parts[0] || '';
+            if (parts.length >= 2) metadata.location.city = parts[1] || '';
+            if (parts.length >= 3) metadata.location.country = parts[2] || '';
+          }
+
+          // Update GPS if provided
+          if (gps !== undefined) {
+            if (!metadata.location) metadata.location = {};
+            // Parse GPS string "lat, lng"
+            const coords = gps.split(',').map(p => parseFloat(p.trim()));
+            if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+              metadata.location.lat = coords[0];
+              metadata.location.lng = coords[1];
+            }
+          }
+
           if (amenities !== undefined) metadata.amenities = amenities;
           if (images !== undefined) {
             // Delete removed images from disk
@@ -410,6 +480,7 @@ app.patch('/api/listings/:id', (req, res) => {
 
           // Save updated metadata
           fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+          console.log('Saved updated metadata to:', metaPath);
 
           // Also update description.txt
           if (description !== undefined) {
@@ -422,6 +493,7 @@ app.patch('/api/listings/:id', (req, res) => {
     }
   }
 
+  console.log('Listing not found with id:', id);
   res.status(404).json({ error: 'Listing not found' });
 });
 

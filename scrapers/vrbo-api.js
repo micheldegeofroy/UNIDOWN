@@ -490,8 +490,13 @@ function extractPropertyDetails(html) {
 /**
  * Main scraping function for VRBO
  */
-async function scrapeVrboApi(url) {
-  console.log('Scraping VRBO:', url);
+async function scrapeVrboApi(url, onProgress = null) {
+  const progress = (msg) => {
+    console.log(msg);
+    if (onProgress) onProgress(msg);
+  };
+
+  progress('Scraping VRBO: ' + url);
 
   // Ensure URL is properly formatted
   if (!url.startsWith('http')) {
@@ -499,7 +504,7 @@ async function scrapeVrboApi(url) {
   }
 
   const propertyId = extractPropertyId(url);
-  console.log('Property ID:', propertyId);
+  progress('Property ID: ' + propertyId);
 
   // Get browser and create page
   const browser = await getBrowser();
@@ -554,7 +559,7 @@ async function scrapeVrboApi(url) {
     });
 
     // Navigate to page with retry logic
-    console.log('Navigating to page...');
+    progress('Navigating to page...');
     let navigationSuccess = false;
     let attempts = 0;
     const maxAttempts = 3;
@@ -568,14 +573,14 @@ async function scrapeVrboApi(url) {
         });
         navigationSuccess = true;
       } catch (navError) {
-        console.log(`Navigation attempt ${attempts} failed:`, navError.message);
+        progress(`Navigation attempt ${attempts} failed: ${navError.message}`);
         if (attempts >= maxAttempts) throw navError;
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
     // Check for bot challenge and wait for it to resolve
-    console.log('Checking for bot challenge...');
+    progress('Checking for bot challenge...');
     let challengeAttempts = 0;
     const maxChallengeWait = 5;
 
@@ -584,13 +589,13 @@ async function scrapeVrboApi(url) {
       const pageContent = await page.content();
 
       if (pageTitle.includes('Bot or Not') || pageContent.includes('Press & Hold') || pageContent.includes('human verification')) {
-        console.log(`Bot challenge detected (attempt ${challengeAttempts + 1}/${maxChallengeWait}), waiting...`);
+        progress(`Bot challenge detected (attempt ${challengeAttempts + 1}/${maxChallengeWait}), waiting...`);
 
         // Try to find and interact with Press & Hold button
         try {
           const holdButton = await page.$('#px-captcha, [id*="captcha"], button[class*="hold"], [aria-label*="hold"]');
           if (holdButton) {
-            console.log('Found hold button, attempting to interact...');
+            progress('Found hold button, attempting to interact...');
             const box = await holdButton.boundingBox();
             if (box) {
               // Move mouse to button with human-like curve
@@ -603,30 +608,30 @@ async function scrapeVrboApi(url) {
               // Press and hold for longer with slight random variation
               await page.mouse.down();
               const holdTime = 8000 + Math.random() * 4000; // 8-12 seconds
-              console.log(`Holding for ${Math.round(holdTime/1000)}s...`);
+              progress(`Holding for ${Math.round(holdTime/1000)}s...`);
               await new Promise(resolve => setTimeout(resolve, holdTime));
               await page.mouse.up();
               await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
             }
           }
         } catch (e) {
-          console.log('Could not interact with challenge button');
+          progress('Could not interact with challenge button');
         }
 
         // Wait and check again
         await new Promise(resolve => setTimeout(resolve, 3000));
         challengeAttempts++;
       } else {
-        console.log('No bot challenge detected, proceeding...');
+        progress('No bot challenge detected, proceeding...');
         break;
       }
     }
 
     // Final check - if still on bot challenge page, retry with fresh browser
     const finalTitle = await page.title();
-    console.log('Final title check:', finalTitle);
+    progress('Final title check: ' + finalTitle);
     if (finalTitle.includes('Bot or Not') || finalTitle.includes('Access Denied') || finalTitle.includes('Blocked')) {
-      console.log('Access blocked, closing browser and retrying with fresh instance...');
+      progress('Access blocked, closing browser and retrying with fresh instance...');
       await page.close();
 
       // Close browser and clear instance
@@ -637,7 +642,7 @@ async function scrapeVrboApi(url) {
       }
 
       // Wait before retry
-      console.log('Waiting 5 seconds before retry...');
+      progress('Waiting 5 seconds before retry...');
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Try once more with fresh browser
@@ -654,7 +659,7 @@ async function scrapeVrboApi(url) {
       await new Promise(resolve => setTimeout(resolve, 3000));
 
       const retryTitle = await retryPage.title();
-      console.log('Retry title check:', retryTitle);
+      progress('Retry title check: ' + retryTitle);
 
       if (retryTitle.includes('Bot or Not') || retryTitle.includes('Access Denied') || retryTitle.includes('Blocked')) {
         await retryPage.close();
@@ -666,11 +671,11 @@ async function scrapeVrboApi(url) {
     }
 
     // Wait for page to stabilize
-    console.log('Waiting for page to stabilize...');
+    progress('Waiting for page to stabilize...');
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Simulate human-like mouse movements
-    console.log('Simulating human behavior...');
+    progress('Simulating human behavior...');
     for (let i = 0; i < 3; i++) {
       const x = 200 + Math.random() * 1200;
       const y = 150 + Math.random() * 400;
@@ -686,7 +691,7 @@ async function scrapeVrboApi(url) {
       const cookieButton = await page.$('[id*="cookie"] button, [class*="cookie"] button, button[id*="accept"], [data-testid*="accept"]');
       if (cookieButton) {
         await cookieButton.click();
-        console.log('Dismissed cookie consent');
+        progress('Dismissed cookie consent');
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } catch (e) {
@@ -694,7 +699,7 @@ async function scrapeVrboApi(url) {
     }
 
     // Try to open the photo gallery to load all images
-    console.log('Looking for photo gallery...');
+    progress('Looking for photo gallery...');
     try {
       // Look for gallery trigger buttons/links
       const gallerySelectors = [
@@ -715,7 +720,7 @@ async function scrapeVrboApi(url) {
       for (const selector of gallerySelectors) {
         const galleryBtn = await page.$(selector);
         if (galleryBtn) {
-          console.log('Found gallery button:', selector);
+          progress('Found gallery button: ' + selector);
           // Move mouse naturally to button
           const box = await galleryBtn.boundingBox();
           if (box) {
@@ -723,7 +728,7 @@ async function scrapeVrboApi(url) {
             await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
             await galleryBtn.click();
             galleryOpened = true;
-            console.log('Clicked gallery button');
+            progress('Clicked gallery button');
             await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
             break;
           }
@@ -733,7 +738,7 @@ async function scrapeVrboApi(url) {
       // If gallery opened, scroll through it to load all images and collect URLs
       let galleryImageUrls = [];
       if (galleryOpened) {
-        console.log('Scrolling through gallery...');
+        progress('Scrolling through gallery...');
         // Wait for gallery to fully load
         await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -784,7 +789,7 @@ async function scrapeVrboApi(url) {
         await collectCurrentImages();
 
         galleryImageUrls = Array.from(collectedUrls);
-        console.log('Collected', galleryImageUrls.length, 'images from gallery');
+        progress('Collected ' + galleryImageUrls.length + ' images from gallery');
 
         // Close gallery by pressing Escape
         await page.keyboard.press('Escape');
@@ -794,12 +799,12 @@ async function scrapeVrboApi(url) {
       // Store gallery URLs for later merging
       page._galleryImageUrls = galleryImageUrls;
     } catch (e) {
-      console.log('Gallery interaction error:', e.message);
+      progress('Gallery interaction error: ' + e.message);
       page._galleryImageUrls = [];
     }
 
     // Scroll page to load lazy content with human-like behavior
-    console.log('Scrolling page to load content...');
+    progress('Scrolling page to load content...');
     await page.evaluate(async () => {
       await new Promise((resolve) => {
         let totalHeight = 0;
@@ -825,7 +830,7 @@ async function scrapeVrboApi(url) {
 
     // Get page content
     const html = await page.content();
-    console.log('Page fetched, length:', html.length);
+    progress('Page fetched, extracting data...');
 
     // Get gallery URLs that were collected earlier
     const galleryUrls = page._galleryImageUrls || [];
@@ -931,12 +936,12 @@ async function scrapeVrboApi(url) {
 
     // Download images
     const downloadedImages = [];
-    console.log(`Found ${data.images.length} images to download`);
+    progress(`Found ${data.images.length} images to download`);
 
     for (let i = 0; i < data.images.length; i++) {
       try {
         const imgUrl = data.images[i];
-        console.log(`Downloading image ${i + 1}/${data.images.length}: ${imgUrl.substring(0, 80)}...`);
+        progress(`Downloading image ${i + 1}/${data.images.length}...`);
         const imgResponse = await downloadImage(imgUrl);
 
         if (imgResponse.status === 200 && imgResponse.buffer.length > 1000) {
@@ -949,7 +954,7 @@ async function scrapeVrboApi(url) {
           const imgName = `image_${i + 1}.${ext}`;
           const imgPath = path.join(imagesDir, imgName);
           fs.writeFileSync(imgPath, imgResponse.buffer);
-          console.log(`Downloaded: ${imgName} (${imgResponse.buffer.length} bytes)`);
+          // Downloaded successfully
           downloadedImages.push({
             original: imgUrl,
             local: `/downloads/${folderId}/images/${imgName}`

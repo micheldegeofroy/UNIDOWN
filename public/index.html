@@ -195,7 +195,7 @@
     .tor-controls {
       background: #F7F7F7;
       border-radius: 12px;
-      padding: 16px 20px;
+      padding: 16px 12px;
       margin-bottom: 24px;
       display: flex;
       align-items: center;
@@ -1297,8 +1297,10 @@
 
     .merge-panel-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       padding: 16px;
+      padding-bottom: 80px;
     }
 
     .merge-section {
@@ -1787,14 +1789,14 @@
             <h3>Merged Result</h3>
           </div>
           <div class="merge-panel-body" id="mergeCenterBody">
-            <div class="merge-section">
+            <div class="merge-section" data-section="title">
               <div class="merge-section-header">Title</div>
               <div class="merge-field">
                 <input type="text" id="mergedTitleInput" class="merge-input" placeholder="Click a title from left/right or type your own" oninput="mergeState.merged.title = this.value" />
               </div>
             </div>
 
-            <div class="merge-section">
+            <div class="merge-section" data-section="description">
               <div class="merge-section-header">
                 Description
               </div>
@@ -1803,29 +1805,29 @@
               </div>
             </div>
 
-            <div class="merge-section">
+            <div class="merge-section" data-section="location">
               <div class="merge-section-header">Location</div>
               <div class="merge-field">
                 <input type="text" id="mergedLocationInput" class="merge-input" placeholder="Click a location from left/right or type your own" oninput="mergeState.merged.locationText = this.value" />
               </div>
             </div>
 
-            <div class="merge-section">
+            <div class="merge-section" data-section="gps">
               <div class="merge-section-header">GPS</div>
               <div class="merge-field">
                 <input type="text" id="mergedGpsInput" class="merge-input" placeholder="Click GPS from left/right or type lat, lng" oninput="mergeState.merged.gpsText = this.value" />
               </div>
             </div>
 
-            <div class="merge-section">
+            <div class="merge-section" data-section="amenities">
               <div class="merge-section-header">Amenities</div>
               <div id="mergedAmenities" style="display: flex; flex-wrap: wrap;">
                 <span style="color: #717171; font-size: 13px;">Click amenities from left or right to add</span>
               </div>
             </div>
 
-            <div class="merge-section">
-              <span id="mergedImageCount" style="display:none;">0</span>
+            <div class="merge-section" data-section="images">
+              <div class="merge-section-header">Images (<span id="mergedImageCount">0</span>)</div>
               <div class="merge-image-grid" id="mergedImages">
               </div>
               <div id="dedupeStatus" style="font-size: 12px; color: #717171; margin-top: 8px;"></div>
@@ -2050,6 +2052,20 @@
       let successCount = 0;
       let failCount = 0;
 
+      // Connect to progress stream
+      let progressEventSource = null;
+      try {
+        progressEventSource = new EventSource('/api/scrape/progress');
+        progressEventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.message) {
+            showStatus(`<span class="spinner"></span>${data.message}`, 'loading');
+          }
+        };
+      } catch (e) {
+        console.log('Could not connect to progress stream');
+      }
+
       for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
         const isAirbnb = url.includes('airbnb.com');
@@ -2116,6 +2132,11 @@
         } else {
           showStatus(`Batch complete: ${successCount} succeeded, ${failCount} failed`, failCount > successCount ? 'error' : 'success');
         }
+      }
+
+      // Close progress stream
+      if (progressEventSource) {
+        progressEventSource.close();
       }
 
       urlInput.value = '';
@@ -2439,6 +2460,8 @@
       title: '',
       sourceUrl: '',
       description: '',
+      location: '',
+      gps: '',
       amenities: [],
       images: []
     };
@@ -2447,11 +2470,26 @@
       const listing = currentListings.find(l => l.id === id);
       if (!listing) return;
 
+      // Build location string from location object
+      let locationStr = '';
+      if (listing.location) {
+        const parts = [listing.location.address, listing.location.city, listing.location.country].filter(p => p);
+        locationStr = parts.join(', ');
+      }
+
+      // Build GPS string
+      let gpsStr = '';
+      if (listing.location?.lat && listing.location?.lng) {
+        gpsStr = `${listing.location.lat}, ${listing.location.lng}`;
+      }
+
       editState = {
         id: listing.id,
         title: listing.title || '',
-        sourceUrl: listing.sourceUrl || '',
+        sourceUrl: (listing.sourceUrl && typeof listing.sourceUrl === 'string') ? listing.sourceUrl : '',
         description: listing.description || '',
+        location: locationStr,
+        gps: gpsStr,
         amenities: [...(listing.amenities || [])],
         images: [...(listing.images || [])]
       };
@@ -2480,6 +2518,16 @@
         <div class="edit-section">
           <label>Description</label>
           <textarea class="edit-textarea" oninput="editState.description = this.value">${editState.description}</textarea>
+        </div>
+
+        <div class="edit-section">
+          <label>Location</label>
+          <input type="text" class="edit-input" value="${editState.location.replace(/"/g, '&quot;')}" oninput="editState.location = this.value" placeholder="Address, City, Country" />
+        </div>
+
+        <div class="edit-section">
+          <label>GPS Coordinates</label>
+          <input type="text" class="edit-input" value="${editState.gps.replace(/"/g, '&quot;')}" oninput="editState.gps = this.value" placeholder="Latitude, Longitude" />
         </div>
 
         <div class="edit-section">
@@ -2542,6 +2590,8 @@
       saveBtn.textContent = 'Saving...';
 
       try {
+        console.log('Saving listing:', editState.id);
+        console.log('Sending sourceUrl:', editState.sourceUrl);
         const response = await fetch(`/api/listings/${editState.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -2549,22 +2599,52 @@
             title: editState.title,
             sourceUrl: editState.sourceUrl,
             description: editState.description,
+            location: editState.location,
+            gps: editState.gps,
             amenities: editState.amenities,
             images: editState.images
           })
         });
 
+        console.log('Response status:', response.status);
         const result = await response.json();
+        console.log('Response data:', result);
+        console.log('Received sourceUrl:', result.listing?.sourceUrl);
 
         if (result.success) {
-          closeEditModal();
+          // Build location string from location object
+          let locationStr = '';
+          if (result.listing.location) {
+            const parts = [result.listing.location.address, result.listing.location.city, result.listing.location.country].filter(p => p);
+            locationStr = parts.join(', ');
+          }
+
+          // Build GPS string
+          let gpsStr = '';
+          if (result.listing.location?.lat && result.listing.location?.lng) {
+            gpsStr = `${result.listing.location.lat}, ${result.listing.location.lng}`;
+          }
+
+          // Update editState with saved data and re-render (don't close modal)
+          editState = {
+            id: result.listing.id,
+            title: result.listing.title || '',
+            sourceUrl: (result.listing.sourceUrl && typeof result.listing.sourceUrl === 'string') ? result.listing.sourceUrl : '',
+            description: result.listing.description || '',
+            location: locationStr,
+            gps: gpsStr,
+            amenities: [...(result.listing.amenities || [])],
+            images: [...(result.listing.images || [])]
+          };
+          renderEditModal();
           loadListings();
-          showStatus('Listing updated successfully!', 'success');
+          showStatus('Listing saved!', 'success');
         } else {
-          alert('Save failed: ' + (result.error || 'Unknown error'));
+          showStatus('Save failed: ' + (result.error || 'Unknown error'), 'error');
         }
       } catch (error) {
-        alert('Save error: ' + error.message);
+        console.error('Save error:', error);
+        showStatus('Save error: ' + error.message, 'error');
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save Changes';
@@ -2882,6 +2962,15 @@
 
       document.getElementById('mergeModal').classList.add('active');
 
+      // Reset scroll positions
+      ['mergeLeftBody', 'mergeCenterBody', 'mergeRightBody'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.scrollTop = 0;
+      });
+
+      // Setup synchronized scrolling across panels
+      setupScrollSync();
+
       // Auto-select preselected listing on left panel
       if (preselected) {
         selectMergeSource('left', preselectedId);
@@ -2904,7 +2993,13 @@
       const platformBadge = listing.platform === 'unified'
         ? (listing.platforms || ['airbnb', 'booking']).map(p => `<span class="listing-platform ${p}" style="font-size:10px;padding:2px 6px;">${p.toUpperCase()}</span>`).join(' ')
         : `<span class="listing-platform ${listing.platform}" style="font-size:10px;padding:2px 6px;">${listing.platform.toUpperCase()}</span>`;
-      header.innerHTML = `${platformBadge}<h3 style="margin-left:8px;">${listing.title?.substring(0, 25) || 'Selected'}${listing.title?.length > 25 ? '...' : ''}</h3>`;
+      const titleText = `${listing.title?.substring(0, 25) || 'Selected'}${listing.title?.length > 25 ? '...' : ''}`;
+      // Left panel: badge then title, Right panel: title then badge
+      if (side === 'left') {
+        header.innerHTML = `${platformBadge}<h3 style="margin-left:8px;">${titleText}</h3>`;
+      } else {
+        header.innerHTML = `<h3 style="margin-right:8px;">${titleText}</h3>${platformBadge}`;
+      }
 
       // Update panel to show selected listing details
       const bodyId = side === 'left' ? 'mergeLeftBody' : 'mergeRightBody';
@@ -2912,7 +3007,7 @@
       const arrow = side === 'left' ? '→' : '←';
 
       body.innerHTML = `
-        <div class="merge-section">
+        <div class="merge-section" data-section="title">
           <div class="merge-section-header">
             Title
             <span class="merge-arrow" onclick="addToMerged('title', '${side}')">${arrow}</span>
@@ -2922,7 +3017,7 @@
           </div>
         </div>
 
-        <div class="merge-section">
+        <div class="merge-section" data-section="description">
           <div class="merge-section-header">
             Description
             <span class="merge-arrow" onclick="addToMerged('description', '${side}')">${arrow}</span>
@@ -2932,7 +3027,7 @@
           </div>
         </div>
 
-        <div class="merge-section">
+        <div class="merge-section" data-section="location">
           <div class="merge-section-header">
             Location
             <span class="merge-arrow" onclick="addToMerged('location', '${side}')">${arrow}</span>
@@ -2942,7 +3037,7 @@
           </div>
         </div>
 
-        <div class="merge-section">
+        <div class="merge-section" data-section="gps">
           <div class="merge-section-header">
             GPS
             <span class="merge-arrow" onclick="addToMerged('gps', '${side}')">${arrow}</span>
@@ -2952,7 +3047,7 @@
           </div>
         </div>
 
-        <div class="merge-section">
+        <div class="merge-section" data-section="amenities">
           <div class="merge-section-header">Amenities</div>
           <div style="display: flex; flex-wrap: wrap;">
             ${(listing.amenities || []).map(a => `
@@ -2961,7 +3056,7 @@
           </div>
         </div>
 
-        <div class="merge-section">
+        <div class="merge-section" data-section="images">
           <div class="merge-section-header">Images (${listing.images?.length || 0})</div>
           <div class="merge-image-grid">
             ${(listing.images || []).map((img, i) => `
@@ -2987,6 +3082,103 @@
       if (mergeState.left && mergeState.right) {
         autoMergeAndAnalyzeImages();
       }
+
+      // Align section heights after DOM renders and images load
+      scheduleHeightAlignment();
+    }
+
+    // Schedule height alignment multiple times to handle async content
+    function scheduleHeightAlignment() {
+      // Immediate alignment for DOM
+      setTimeout(alignSectionHeights, 50);
+      // Second pass for images starting to load
+      setTimeout(alignSectionHeights, 200);
+      // Third pass for images fully loaded
+      setTimeout(alignSectionHeights, 500);
+      // Final pass for slow images
+      setTimeout(alignSectionHeights, 1000);
+
+      // Also attach onload handlers to all images in merge panels
+      const imgs = document.querySelectorAll('#mergeLeftBody img, #mergeCenterBody img, #mergeRightBody img');
+      imgs.forEach(img => {
+        if (!img.dataset.alignHandlerSet) {
+          img.dataset.alignHandlerSet = 'true';
+          img.addEventListener('load', () => {
+            alignSectionHeights();
+          });
+        }
+      });
+    }
+
+    // Align section heights across all three panels for visual consistency
+    function alignSectionHeights() {
+      const sections = ['title', 'description', 'location', 'gps', 'amenities', 'images'];
+
+      for (const section of sections) {
+        const leftSection = document.querySelector(`#mergeLeftPanel [data-section="${section}"]`);
+        const centerSection = document.querySelector(`#mergeCenterPanel [data-section="${section}"]`);
+        const rightSection = document.querySelector(`#mergeRightPanel [data-section="${section}"]`);
+
+        // Reset heights first to get natural heights
+        [leftSection, centerSection, rightSection].forEach(el => {
+          if (el) {
+            el.style.minHeight = '';
+            el.style.height = '';
+          }
+        });
+
+        // Force reflow
+        [leftSection, centerSection, rightSection].forEach(el => el && el.offsetHeight);
+
+        // Get max height
+        const heights = [leftSection, centerSection, rightSection]
+          .filter(el => el)
+          .map(el => el.offsetHeight);
+
+        if (heights.length > 0) {
+          const maxHeight = Math.max(...heights);
+
+          // Apply max height to all sections
+          [leftSection, centerSection, rightSection].forEach(el => {
+            if (el) {
+              el.style.minHeight = maxHeight + 'px';
+              el.style.height = maxHeight + 'px';
+            }
+          });
+        }
+      }
+    }
+
+    // Synchronize scroll across all three merge panels
+    let isScrollSyncing = false;
+    let scrollSyncSetup = false;
+    function setupScrollSync() {
+      if (scrollSyncSetup) return;
+      scrollSyncSetup = true;
+
+      const panels = [
+        document.getElementById('mergeLeftBody'),
+        document.getElementById('mergeCenterBody'),
+        document.getElementById('mergeRightBody')
+      ];
+
+      panels.forEach(panel => {
+        if (panel) {
+          panel.addEventListener('scroll', function() {
+            if (isScrollSyncing) return;
+            isScrollSyncing = true;
+            const scrollTop = this.scrollTop;
+            requestAnimationFrame(() => {
+              panels.forEach(p => {
+                if (p && p !== this) {
+                  p.scrollTop = scrollTop;
+                }
+              });
+              isScrollSyncing = false;
+            });
+          });
+        }
+      });
     }
 
     function addToMerged(field, side) {
@@ -3090,6 +3282,9 @@
           </div>
         `).join('');
       }
+
+      // Re-align heights after images are updated
+      scheduleHeightAlignment();
     }
 
     async function autoMergeAndAnalyzeImages() {
@@ -3208,6 +3403,9 @@
           </span>
         </div>
       `).join('');
+
+      // Re-align heights after images are rendered
+      scheduleHeightAlignment();
     }
 
     function toggleAnalyzedImage(index, element) {
