@@ -617,142 +617,88 @@ function mergeImages(existingImages, newImages) {
 // Generate listing info text file content
 function generateListingInfoText(metadata) {
   const lines = [];
-  const divider = '='.repeat(60);
-  const subDivider = '-'.repeat(40);
 
-  lines.push(divider);
-  lines.push('UNIDOWN - PROPERTY LISTING EXPORT');
-  lines.push(`Generated: ${new Date().toISOString()}`);
-  lines.push(divider);
+  // Title
+  lines.push('Title: ');
+  lines.push(metadata.title || '');
   lines.push('');
 
-  // Basic Info
-  lines.push('PROPERTY INFORMATION');
-  lines.push(subDivider);
-  lines.push(`Title: ${metadata.title || 'N/A'}`);
-  lines.push(`Platform: ${metadata.platform || 'N/A'}`);
-  lines.push(`Listing ID: ${metadata.id || 'N/A'}`);
-  lines.push(`Source URL: ${metadata.sourceUrl || 'N/A'}`);
-  lines.push('');
-
-  // Location
-  lines.push('LOCATION');
-  lines.push(subDivider);
-  if (metadata.location) {
-    if (metadata.location.address) lines.push(`Address: ${metadata.location.address}`);
-    if (metadata.location.city) lines.push(`City: ${metadata.location.city}`);
-    if (metadata.location.state) lines.push(`State/Region: ${metadata.location.state}`);
-    if (metadata.location.country) lines.push(`Country: ${metadata.location.country}`);
-    if (metadata.location.lat && metadata.location.lng) {
-      lines.push(`GPS Coordinates: ${metadata.location.lat}, ${metadata.location.lng}`);
-      lines.push(`Google Maps: https://www.google.com/maps?q=${metadata.location.lat},${metadata.location.lng}`);
-    }
-  } else {
-    lines.push('No location data available');
-  }
-  lines.push('');
-
-  // Property Details
-  lines.push('PROPERTY DETAILS');
-  lines.push(subDivider);
-  if (metadata.bedrooms) lines.push(`Bedrooms: ${metadata.bedrooms}`);
-  if (metadata.bathrooms) lines.push(`Bathrooms: ${metadata.bathrooms}`);
-  if (metadata.guests) lines.push(`Max Guests: ${metadata.guests}`);
-  if (metadata.propertyType) lines.push(`Property Type: ${metadata.propertyType}`);
-  if (metadata.rating) lines.push(`Rating: ${metadata.rating}`);
-  if (metadata.reviewCount) lines.push(`Reviews: ${metadata.reviewCount}`);
-  lines.push('');
-
-  // Pricing
-  if (metadata.price || metadata.pricing) {
-    lines.push('PRICING');
-    lines.push(subDivider);
-    if (metadata.price) lines.push(`Price: ${metadata.price}`);
-    if (metadata.pricing) {
-      if (metadata.pricing.basePrice) lines.push(`Base Price: ${metadata.pricing.basePrice}`);
-      if (metadata.pricing.cleaningFee) lines.push(`Cleaning Fee: ${metadata.pricing.cleaningFee}`);
-      if (metadata.pricing.serviceFee) lines.push(`Service Fee: ${metadata.pricing.serviceFee}`);
-    }
+  // City
+  if (metadata.location?.city) {
+    lines.push('City: ');
+    lines.push(metadata.location.city);
     lines.push('');
   }
 
-  // Host Info
-  if (metadata.host) {
-    lines.push('HOST INFORMATION');
-    lines.push(subDivider);
-    if (metadata.host.name) lines.push(`Host Name: ${metadata.host.name}`);
-    if (metadata.host.superhost) lines.push(`Superhost: Yes`);
-    if (metadata.host.responseRate) lines.push(`Response Rate: ${metadata.host.responseRate}`);
+  // Country
+  if (metadata.location?.country) {
+    lines.push('Country: ');
+    lines.push(metadata.location.country);
+    lines.push('');
+  }
+
+  // GPS Coordinates
+  if (metadata.location?.lat && metadata.location?.lng) {
+    lines.push('GPS Coordinates: ');
+    lines.push(String(metadata.location.lat));
+    lines.push(String(metadata.location.lng));
+    lines.push('');
+
+    lines.push('Google Maps: ');
+    lines.push(`https://www.google.com/maps?q=${metadata.location.lat},${metadata.location.lng}`);
+    lines.push('');
+  }
+
+  // Bedrooms
+  if (metadata.bedrooms) {
+    lines.push('Bedrooms:');
+    lines.push(String(metadata.bedrooms));
+    lines.push('');
+  }
+
+  // Bathrooms
+  if (metadata.bathrooms) {
+    lines.push('Bathrooms: ');
+    lines.push(String(metadata.bathrooms));
+    lines.push('');
+  }
+
+  // Property Type
+  if (metadata.propertyType) {
+    lines.push('Property Type: ');
+    lines.push(metadata.propertyType);
+    lines.push('');
+  }
+
+  // Host Name
+  if (metadata.host?.name) {
+    lines.push('Host Name: ');
+    lines.push(metadata.host.name);
     lines.push('');
   }
 
   // Description
-  lines.push('DESCRIPTION');
-  lines.push(subDivider);
-  lines.push(metadata.description || 'No description available');
+  lines.push('Description:');
+  lines.push(metadata.description || '');
   lines.push('');
 
   // Amenities
   if (metadata.amenities && metadata.amenities.length > 0) {
-    lines.push('AMENITIES');
-    lines.push(subDivider);
-    metadata.amenities.forEach((amenity, i) => {
-      lines.push(`  • ${amenity}`);
+    lines.push('Amenities:');
+    metadata.amenities.forEach(amenity => {
+      lines.push(amenity);
     });
     lines.push('');
   }
 
   // House Rules
   if (metadata.houseRules && metadata.houseRules.length > 0) {
-    lines.push('HOUSE RULES');
-    lines.push(subDivider);
+    lines.push('House Rules:');
     metadata.houseRules.forEach(rule => {
-      lines.push(`  • ${rule}`);
+      lines.push(rule);
     });
     lines.push('');
   }
-
-  // Check-in/Check-out
-  if (metadata.checkIn || metadata.checkOut) {
-    lines.push('CHECK-IN / CHECK-OUT');
-    lines.push(subDivider);
-    if (metadata.checkIn) lines.push(`Check-in: ${metadata.checkIn}`);
-    if (metadata.checkOut) lines.push(`Check-out: ${metadata.checkOut}`);
-    lines.push('');
-  }
-
-  // Images
-  if (metadata.images && metadata.images.length > 0) {
-    lines.push('IMAGES');
-    lines.push(subDivider);
-    lines.push(`Total Images: ${metadata.images.length}`);
-    lines.push('');
-    metadata.images.forEach((img, i) => {
-      const filename = img.local ? path.basename(img.local) : `image_${i + 1}`;
-      lines.push(`  ${i + 1}. ${filename}`);
-      if (img.original) lines.push(`     Original URL: ${img.original}`);
-    });
-    lines.push('');
-  }
-
-  // Merged Sources (if unified listing)
-  if (metadata.sources || metadata.platforms) {
-    lines.push('MERGED FROM');
-    lines.push(subDivider);
-    if (metadata.platforms) {
-      lines.push(`Platforms: ${metadata.platforms.join(', ')}`);
-    }
-    if (metadata.sources) {
-      Object.entries(metadata.sources).forEach(([key, value]) => {
-        lines.push(`  ${key}: ${value}`);
-      });
-    }
-    lines.push('');
-  }
-
-  lines.push(divider);
-  lines.push('End of Export');
-  lines.push(divider);
 
   return lines.join('\n');
 }
@@ -797,10 +743,25 @@ app.get('/api/listings/:id/zip', async (req, res) => {
           const infoText = generateListingInfoText(metadata);
           archive.append(infoText, { name: 'listing_info.txt' });
 
-          // Add images folder if it exists
+          // Add images with clean names
           const imagesPath = path.join(folderPath, 'images');
           if (fs.existsSync(imagesPath)) {
-            archive.directory(imagesPath, 'images');
+            const imageFiles = fs.readdirSync(imagesPath);
+            let imgCount = 1;
+
+            for (const file of imageFiles) {
+              const filePath = path.join(imagesPath, file);
+              const ext = path.extname(file).toLowerCase() || '.jpg';
+
+              // Keep host_avatar with its name
+              if (file.includes('host_avatar')) {
+                archive.file(filePath, { name: `images/host_avatar${ext}` });
+              } else {
+                // Rename to img1, img2, etc.
+                archive.file(filePath, { name: `images/img${imgCount}${ext}` });
+                imgCount++;
+              }
+            }
           }
 
           // Finalize the archive

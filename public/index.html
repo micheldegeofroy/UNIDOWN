@@ -8,10 +8,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="UNIDOWN">
   <title>UNIDOWN - Download Your Rental Listings</title>
-  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+  <link rel="alternate icon" href="/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="mask-icon" href="/icons/favicon.svg" color="#FF385C">
   <link rel="manifest" href="/manifest.json">
   <style>
     * {
@@ -344,6 +346,17 @@
     .btn-tor:disabled {
       opacity: 0.4;
       cursor: not-allowed;
+    }
+
+    /* Keep New IP button solid red */
+    #torNewIpBtn {
+      background: linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%);
+      color: white;
+    }
+
+    #torNewIpBtn:disabled {
+      opacity: 1;
+      background: linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%);
     }
 
     .btn-tor-outline {
@@ -2982,9 +2995,7 @@
                   <div class="listing-actions">
                     <button class="btn btn-outline btn-small" onclick="openEditModal('${listing.id}')">Edit</button>
                     <button class="btn btn-outline btn-small" onclick="openMergeModal('${listing.id}')">Merge</button>
-                    <a href="/api/listings/${listing.id}/zip" class="btn btn-primary btn-small" download>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>ZIP
-                    </a>
+                    <a href="/api/listings/${listing.id}/zip" class="btn btn-outline btn-small" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>ZIP</a>
                     <button class="btn btn-outline btn-small btn-danger" onclick="deleteListing('${listing.id}')">Delete</button>
                   </div>
                 </div>
