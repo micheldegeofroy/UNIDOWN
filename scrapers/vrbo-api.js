@@ -14,9 +14,10 @@ const path = require('path');
 // Add stealth plugin
 puppeteer.use(StealthPlugin());
 
-// Reusable browser instance
+// Reusable browser instance with launch lock to prevent race conditions
 let browserInstance = null;
 let currentProxyConfig = null;
+let browserLaunchPromise = null;
 
 // Tor configuration
 const TOR_SOCKS_PORT = 9050;
@@ -53,7 +54,7 @@ function setTorEnabled(enabled) {
 }
 
 /**
- * Get or create browser instance
+ * Get or create browser instance (with race condition protection)
  */
 async function getBrowser() {
   // Check if we need to recreate browser due to proxy change
@@ -63,6 +64,14 @@ async function getBrowser() {
 
   if (browserInstance && browserInstance.isConnected() && currentProxyConfig === proxyArg) {
     return browserInstance;
+  }
+
+  // If a launch is already in progress, wait for it
+  if (browserLaunchPromise) {
+    await browserLaunchPromise;
+    if (browserInstance && browserInstance.isConnected() && currentProxyConfig === proxyArg) {
+      return browserInstance;
+    }
   }
 
   // Close existing browser if proxy config changed
@@ -91,11 +100,19 @@ async function getBrowser() {
   }
 
   currentProxyConfig = proxyArg;
-  browserInstance = await puppeteer.launch({
+
+  // Launch with lock to prevent race conditions
+  browserLaunchPromise = puppeteer.launch({
     headless: 'new',
     args,
     ignoreDefaultArgs: ['--enable-automation']
   });
+
+  try {
+    browserInstance = await browserLaunchPromise;
+  } finally {
+    browserLaunchPromise = null;
+  }
 
   return browserInstance;
 }

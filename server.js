@@ -4,6 +4,19 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const rateLimit = require('express-rate-limit');
+
+// Simple structured logger
+const logger = {
+  _format(level, message, meta = {}) {
+    const timestamp = new Date().toISOString();
+    const metaStr = Object.keys(meta).length ? ' ' + JSON.stringify(meta) : '';
+    return `[${timestamp}] [${level}] ${message}${metaStr}`;
+  },
+  info(message, meta) { console.log(this._format('INFO', message, meta)); },
+  warn(message, meta) { console.warn(this._format('WARN', message, meta)); },
+  error(message, meta) { console.error(this._format('ERROR', message, meta)); },
+  debug(message, meta) { if (process.env.DEBUG) console.log(this._format('DEBUG', message, meta)); }
+};
 const { scrapeAirbnbApi, searchAirbnbApi } = require('./scrapers/airbnb-api');
 const { scrapeAirbnb, searchAirbnbProperty, proxyManager: airbnbProxyManager } = require('./scrapers/airbnb');
 const { scrapeBookingApi, closeBrowser: closeBookingBrowser } = require('./scrapers/booking-api');
@@ -23,6 +36,41 @@ function safeJsonParse(str, defaultValue = null) {
   }
 }
 
+// Standardized API response helpers
+function sendSuccess(res, data = {}) {
+  return res.json({ success: true, ...data });
+}
+
+function sendError(res, statusCode, message, details = null) {
+  const response = { success: false, error: message };
+  if (details) response.details = details;
+  return res.status(statusCode).json(response);
+}
+
+// Supported platforms for URL validation
+const SUPPORTED_PLATFORMS = ['airbnb.com', 'booking.com', 'vrbo.com'];
+
+// Validate and identify platform from URL
+function validateListingUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    // Check protocol
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, error: 'URL must use http or https protocol' };
+    }
+    // Check hostname against supported platforms
+    const hostname = url.hostname.toLowerCase();
+    for (const platform of SUPPORTED_PLATFORMS) {
+      if (hostname === platform || hostname.endsWith('.' + platform)) {
+        return { valid: true, platform: platform.split('.')[0], url: url.href };
+      }
+    }
+    return { valid: false, error: 'Please provide a valid Airbnb, Booking.com, or VRBO URL' };
+  } catch (e) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
 // Shared proxy manager
 const proxyManager = new ProxyManager();
 
@@ -31,6 +79,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/downloads', express.static('downloads'));
+
+// Request logging middleware (for API routes only)
+app.use('/api', (req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`${req.method} ${req.originalUrl}`, {
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip
+    });
+  });
+  next();
+});
 
 // Rate limiting - protect API endpoints from abuse
 const apiLimiter = rateLimit({
@@ -352,8 +414,9 @@ app.post('/api/saved-urls', (req, res) => {
     return res.status(400).json({ error: 'Name and URL are required' });
   }
 
-  if (!url.includes('airbnb.com') && !url.includes('booking.com') && !url.includes('vrbo.com')) {
-    return res.status(400).json({ error: 'Please provide a valid Airbnb, Booking.com, or VRBO URL' });
+  const validation = validateListingUrl(url);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
   let savedUrls = [];
@@ -561,9 +624,18 @@ app.post('/api/listings/:id/update', async (req, res) => {
       return res.status(404).json({ error: 'Listing not found or missing source URL' });
     }
 
-    const { metadata: existingMetadata, folder: listingFolder } = listing;
+    const { metadata: existingMetadata, folder: listingFolder, metaPath } = listing;
 
     console.log(`Updating listing ${id} from ${existingMetadata.sourceUrl}`);
+
+    // Create backup of existing metadata before re-scraping
+    const backupPath = metaPath + '.backup';
+    try {
+      await fsPromises.copyFile(metaPath, backupPath);
+      console.log(`Created backup: ${backupPath}`);
+    } catch (backupErr) {
+      console.warn('Failed to create backup:', backupErr.message);
+    }
 
     // Progress callback for update operations (logs to console)
     const updateProgress = (msg) => console.log(`[Update ${id}] ${msg}`);
@@ -595,6 +667,11 @@ app.post('/api/listings/:id/update', async (req, res) => {
     // Save aggregated metadata
     fs.writeFileSync(newMetaPath, JSON.stringify(aggregatedMetadata, null, 2));
 
+    // Remove backup on success
+    if (fs.existsSync(backupPath)) {
+      fs.unlinkSync(backupPath);
+    }
+
     res.json({
       success: true,
       newImages: newImagesCount,
@@ -604,6 +681,21 @@ app.post('/api/listings/:id/update', async (req, res) => {
 
   } catch (error) {
     console.error('Update error:', error);
+
+    // Try to restore from backup on failure
+    try {
+      const listing = await findListingById(req.params.id);
+      if (listing) {
+        const backupPath = listing.metaPath + '.backup';
+        if (fs.existsSync(backupPath)) {
+          fs.copyFileSync(backupPath, listing.metaPath);
+          console.log('Restored metadata from backup');
+        }
+      }
+    } catch (restoreErr) {
+      console.error('Failed to restore backup:', restoreErr.message);
+    }
+
     res.status(500).json({
       error: 'Failed to update listing',
       details: error.message
@@ -961,7 +1053,15 @@ async function getImageEmbedding(imagePath) {
 }
 
 // Analyze images for similarity using CLIP embeddings
+const MAX_IMAGES_FOR_CLIP = 100; // Limit to prevent memory issues
+
 async function analyzeImageSimilarityCLIP(images, threshold = 0.92) {
+  // Limit the number of images to prevent memory exhaustion
+  if (images.length > MAX_IMAGES_FOR_CLIP) {
+    console.warn(`Too many images (${images.length}), limiting to ${MAX_IMAGES_FOR_CLIP}`);
+    images = images.slice(0, MAX_IMAGES_FOR_CLIP);
+  }
+
   const embeddings = [];
 
   console.log(`Computing CLIP embeddings for ${images.length} images...`);
@@ -1520,7 +1620,9 @@ app.post('/api/tor/test', async (req, res) => {
       });
       country = geoResponse.data.country || 'Unknown';
       city = geoResponse.data.city || 'Unknown';
-    } catch (e) {}
+    } catch (geoError) {
+      console.warn('Geolocation lookup failed:', geoError.message);
+    }
 
     res.json({
       success: true,
@@ -1765,7 +1867,9 @@ function getDirectorySize(dirPath) {
         size += stat.size;
       }
     }
-  } catch (e) {}
+  } catch (err) {
+    console.warn('Error calculating directory size:', dirPath, err.message);
+  }
   return formatBytes(size);
 }
 

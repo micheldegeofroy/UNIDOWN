@@ -14,27 +14,45 @@ const path = require('path');
 // Add stealth plugin
 puppeteer.use(StealthPlugin());
 
-// Reusable browser instance
+// Reusable browser instance with launch lock to prevent race conditions
 let browserInstance = null;
+let browserLaunchPromise = null;
 
 /**
- * Get or create browser instance
+ * Get or create browser instance (with race condition protection)
  */
 async function getBrowser() {
-  if (!browserInstance || !browserInstance.isConnected()) {
-    console.log('Launching new browser instance...');
-    browserInstance = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--window-size=1920,1080'
-      ]
-    });
+  // If browser exists and is connected, return it
+  if (browserInstance && browserInstance.isConnected()) {
+    return browserInstance;
   }
+
+  // If a launch is already in progress, wait for it
+  if (browserLaunchPromise) {
+    await browserLaunchPromise;
+    return browserInstance;
+  }
+
+  // Start a new launch with lock
+  console.log('Launching new browser instance...');
+  browserLaunchPromise = puppeteer.launch({
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--window-size=1920,1080'
+    ]
+  });
+
+  try {
+    browserInstance = await browserLaunchPromise;
+  } finally {
+    browserLaunchPromise = null;
+  }
+
   return browserInstance;
 }
 
