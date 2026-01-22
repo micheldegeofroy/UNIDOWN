@@ -5,11 +5,17 @@
 
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const https = require('https');
-const http = require('http');
-const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
+const {
+  downloadImage,
+  extractJsonLd,
+  createProgress,
+  ensureDir,
+  getExtensionFromContentType,
+  saveMetadata,
+  saveDebugHtml
+} = require('./utils');
 
 // Add stealth plugin
 puppeteer.use(StealthPlugin());
@@ -67,53 +73,6 @@ async function closeBrowser() {
 }
 
 /**
- * Download image as binary buffer (HTTP)
- */
-function downloadImage(url) {
-  return new Promise((resolve, reject) => {
-    const parsedUrl = new URL(url);
-    const protocol = parsedUrl.protocol === 'https:' ? https : http;
-
-    const requestOptions = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Host': parsedUrl.hostname
-      }
-    };
-
-    const req = protocol.request(requestOptions, (res) => {
-      // Follow redirects
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return downloadImage(res.headers.location).then(resolve).catch(reject);
-      }
-
-      let data = [];
-      res.on('data', chunk => data.push(chunk));
-      res.on('end', () => {
-        const buffer = Buffer.concat(data);
-        resolve({
-          status: res.statusCode,
-          buffer: buffer,
-          contentType: res.headers['content-type']
-        });
-      });
-    });
-
-    req.on('error', reject);
-    req.setTimeout(30000, () => {
-      req.destroy();
-      reject(new Error('Image download timeout'));
-    });
-    req.end();
-  });
-}
-
-/**
  * Extract property ID from Booking.com URL
  */
 function extractPropertyId(url) {
@@ -124,30 +83,6 @@ function extractPropertyId(url) {
   }
   // Fallback: use hash of URL
   return Buffer.from(url).toString('base64').substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
-}
-
-/**
- * Parse JSON-LD data from HTML
- */
-function extractJsonLd(html) {
-  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-  const results = [];
-
-  if (jsonLdMatches) {
-    for (const match of jsonLdMatches) {
-      const jsonMatch = match.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
-      if (jsonMatch) {
-        try {
-          const data = JSON.parse(jsonMatch[1]);
-          results.push(data);
-        } catch (e) {
-          // Skip invalid JSON
-        }
-      }
-    }
-  }
-
-  return results;
 }
 
 /**
@@ -378,10 +313,7 @@ function extractPropertyDetails(html) {
  * Main scraping function for Booking.com
  */
 async function scrapeBookingApi(url, onProgress = null) {
-  const progress = (msg) => {
-    console.log(msg);
-    if (onProgress) onProgress(msg);
-  };
+  const progress = createProgress(onProgress);
 
   progress('Scraping Booking.com: ' + url);
 
@@ -497,11 +429,7 @@ async function scrapeBookingApi(url, onProgress = null) {
 
     // Save HTML for debugging
     const debugDir = path.join(__dirname, '..', 'debug');
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-    fs.writeFileSync(path.join(debugDir, 'booking-page.html'), html);
-    console.log('Saved debug HTML to debug/booking-page.html');
+    saveDebugHtml(debugDir, 'booking-page.html', html);
 
     // Close page
     await page.close();
@@ -570,10 +498,7 @@ async function scrapeBookingApi(url, onProgress = null) {
     const folderId = `booking_${propertyId}`;
     const downloadDir = path.join(downloadsDir, folderId);
     const imagesDir = path.join(downloadDir, 'images');
-
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
+    ensureDir(imagesDir);
 
     // Download images
     const downloadedImages = [];
@@ -586,12 +511,7 @@ async function scrapeBookingApi(url, onProgress = null) {
         const imgResponse = await downloadImage(imgUrl);
 
         if (imgResponse.status === 200 && imgResponse.buffer.length > 1000) {
-          let ext = 'jpg';
-          if (imgResponse.contentType) {
-            if (imgResponse.contentType.includes('png')) ext = 'png';
-            else if (imgResponse.contentType.includes('webp')) ext = 'webp';
-          }
-
+          const ext = getExtensionFromContentType(imgResponse.contentType);
           const imgName = `image_${i + 1}.${ext}`;
           const imgPath = path.join(imagesDir, imgName);
           fs.writeFileSync(imgPath, imgResponse.buffer);
@@ -631,10 +551,7 @@ async function scrapeBookingApi(url, onProgress = null) {
       guests: data.guests
     };
 
-    fs.writeFileSync(
-      path.join(downloadDir, 'metadata.json'),
-      JSON.stringify(metadata, null, 2)
-    );
+    saveMetadata(downloadDir, metadata);
 
     return {
       success: true,

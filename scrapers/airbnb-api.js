@@ -9,6 +9,7 @@ const http = require('http');
 const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
+const { createProgress, ensureDir, saveMetadata, saveDebugHtml, getExtensionFromContentType } = require('./utils');
 
 // Headers that mimic Chrome browser
 const BROWSER_HEADERS = {
@@ -617,10 +618,7 @@ function parseRoomDetails(html, roomUrl) {
  * Scrape Airbnb listing using API approach
  */
 async function scrapeAirbnbApi(url, onProgress = null) {
-  const progress = (msg) => {
-    console.log(msg);
-    if (onProgress) onProgress(msg);
-  };
+  const progress = createProgress(onProgress);
 
   progress(`Scraping (API): ${url}`);
 
@@ -637,22 +635,13 @@ async function scrapeAirbnbApi(url, onProgress = null) {
 
     // Save debug HTML
     const debugDir = path.join(__dirname, '..', 'downloads', 'debug');
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-    fs.writeFileSync(path.join(debugDir, `api_response_${Date.now()}.html`), response.body);
+    saveDebugHtml(debugDir, `api_response_${Date.now()}.html`, response.body);
 
     // Download images and save in listings-compatible format
     const folderId = data.roomId || `airbnb_${Date.now()}`;
     const downloadDir = path.join(__dirname, '..', 'downloads', folderId);
-    if (!fs.existsSync(downloadDir)) {
-      fs.mkdirSync(downloadDir, { recursive: true });
-    }
-
     const imagesDir = path.join(downloadDir, 'images');
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
+    ensureDir(imagesDir);
 
     // Download all images
     const downloadedImages = [];
@@ -664,13 +653,7 @@ async function scrapeAirbnbApi(url, onProgress = null) {
         const imgResponse = await downloadImage(imgUrl);
 
         if (imgResponse.status === 200 && imgResponse.buffer.length > 1000) {
-          // Determine extension from content type
-          let ext = 'jpg';
-          if (imgResponse.contentType) {
-            if (imgResponse.contentType.includes('png')) ext = 'png';
-            else if (imgResponse.contentType.includes('webp')) ext = 'webp';
-          }
-
+          const ext = getExtensionFromContentType(imgResponse.contentType);
           const imgName = `image_${i + 1}.${ext}`;
           const imgPath = path.join(imagesDir, imgName);
           fs.writeFileSync(imgPath, imgResponse.buffer);
@@ -694,11 +677,7 @@ async function scrapeAirbnbApi(url, onProgress = null) {
         progress('Downloading host avatar...');
         const avatarResponse = await downloadImage(data.host.profilePicture);
         if (avatarResponse.status === 200 && avatarResponse.buffer.length > 500) {
-          let ext = 'jpg';
-          if (avatarResponse.contentType) {
-            if (avatarResponse.contentType.includes('png')) ext = 'png';
-            else if (avatarResponse.contentType.includes('webp')) ext = 'webp';
-          }
+          const ext = getExtensionFromContentType(avatarResponse.contentType);
           const avatarName = `host_avatar.${ext}`;
           const avatarPath = path.join(imagesDir, avatarName);
           fs.writeFileSync(avatarPath, avatarResponse.buffer);
@@ -762,10 +741,7 @@ async function scrapeAirbnbApi(url, onProgress = null) {
       licenseNumber: data.licenseNumber || ''
     };
 
-    fs.writeFileSync(
-      path.join(downloadDir, 'metadata.json'),
-      JSON.stringify(metadata, null, 2)
-    );
+    saveMetadata(downloadDir, metadata);
 
     // Update data with downloaded images for response
     data.images = downloadedImages.map(img => img.original);
