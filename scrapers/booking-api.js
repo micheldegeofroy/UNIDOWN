@@ -23,14 +23,21 @@ puppeteer.use(StealthPlugin());
 // Reusable browser instance with launch lock to prevent race conditions
 let browserInstance = null;
 let browserLaunchPromise = null;
+let browserUseCount = 0;
+const MAX_BROWSER_USES = 10; // Recycle browser after this many scrapes to prevent memory leaks
 
 /**
  * Get or create browser instance (with race condition protection)
  */
 async function getBrowser() {
-  // If browser exists and is connected, return it
+  // If browser exists and is connected, check if we should recycle it
   if (browserInstance && browserInstance.isConnected()) {
-    return browserInstance;
+    if (browserUseCount >= MAX_BROWSER_USES) {
+      console.log('Recycling browser instance after', browserUseCount, 'uses');
+      await closeBrowser();
+    } else {
+      return browserInstance;
+    }
   }
 
   // If a launch is already in progress, wait for it
@@ -55,6 +62,7 @@ async function getBrowser() {
 
   try {
     browserInstance = await browserLaunchPromise;
+    browserUseCount = 0;
   } finally {
     browserLaunchPromise = null;
   }
@@ -67,8 +75,26 @@ async function getBrowser() {
  */
 async function closeBrowser() {
   if (browserInstance) {
-    await browserInstance.close();
+    try {
+      await browserInstance.close();
+    } catch (err) {
+      console.warn('Error closing browser:', err.message);
+    }
     browserInstance = null;
+    browserUseCount = 0;
+  }
+}
+
+/**
+ * Safely close a page
+ */
+async function safeClosePage(page) {
+  if (page) {
+    try {
+      await page.close();
+    } catch (err) {
+      console.warn('Error closing page:', err.message);
+    }
   }
 }
 
@@ -553,6 +579,9 @@ async function scrapeBookingApi(url, onProgress = null) {
 
     saveMetadata(downloadDir, metadata);
 
+    // Increment browser use count on successful scrape
+    browserUseCount++;
+
     return {
       success: true,
       platform: 'booking',
@@ -560,7 +589,7 @@ async function scrapeBookingApi(url, onProgress = null) {
     };
 
   } catch (error) {
-    await page.close().catch(() => {});
+    await safeClosePage(page);
     throw error;
   }
 }

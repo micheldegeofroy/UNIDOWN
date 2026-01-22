@@ -24,6 +24,8 @@ puppeteer.use(StealthPlugin());
 let browserInstance = null;
 let currentProxyConfig = null;
 let browserLaunchPromise = null;
+let browserUseCount = 0;
+const MAX_BROWSER_USES = 10; // Recycle browser after this many scrapes to prevent memory leaks
 
 // Tor configuration
 const TOR_SOCKS_PORT = 9050;
@@ -68,8 +70,14 @@ async function getBrowser() {
   console.log('VRBO browser: Tor enabled =', torEnabledSetting, ', Tor running =', torRunning);
   const proxyArg = torRunning ? `--proxy-server=socks5://127.0.0.1:${TOR_SOCKS_PORT}` : null;
 
+  // Check if we should recycle the browser due to use count
   if (browserInstance && browserInstance.isConnected() && currentProxyConfig === proxyArg) {
-    return browserInstance;
+    if (browserUseCount >= MAX_BROWSER_USES) {
+      console.log('Recycling VRBO browser instance after', browserUseCount, 'uses');
+      await closeBrowser();
+    } else {
+      return browserInstance;
+    }
   }
 
   // If a launch is already in progress, wait for it
@@ -116,6 +124,7 @@ async function getBrowser() {
 
   try {
     browserInstance = await browserLaunchPromise;
+    browserUseCount = 0;
   } finally {
     browserLaunchPromise = null;
   }
@@ -128,8 +137,26 @@ async function getBrowser() {
  */
 async function closeBrowser() {
   if (browserInstance) {
-    await browserInstance.close();
+    try {
+      await browserInstance.close();
+    } catch (err) {
+      console.warn('Error closing VRBO browser:', err.message);
+    }
     browserInstance = null;
+    browserUseCount = 0;
+  }
+}
+
+/**
+ * Safely close a page
+ */
+async function safeClosePage(page) {
+  if (page) {
+    try {
+      await page.close();
+    } catch (err) {
+      console.warn('Error closing page:', err.message);
+    }
   }
 }
 
@@ -718,7 +745,20 @@ async function scrapeVrboApi(url, onProgress = null) {
         await collectCurrentImages();
 
         // Try to find and click "next" button multiple times, or scroll
-        for (let i = 0; i < 50; i++) {
+        // Add timeout protection: max 30 seconds or 50 iterations, whichever comes first
+        const galleryStartTime = Date.now();
+        const GALLERY_TIMEOUT_MS = 30000;
+        const MAX_ITERATIONS = 50;
+        let lastImageCount = 0;
+        let noNewImagesCount = 0;
+
+        for (let i = 0; i < MAX_ITERATIONS; i++) {
+          // Timeout check
+          if (Date.now() - galleryStartTime > GALLERY_TIMEOUT_MS) {
+            progress('Gallery timeout reached, stopping collection');
+            break;
+          }
+
           const nextBtn = await page.$('button[aria-label*="next"], button[aria-label*="Next"], [class*="next"], [data-testid*="next"], button[data-icon="icon-arrow-right"]');
           if (nextBtn) {
             await nextBtn.click();
@@ -731,6 +771,18 @@ async function scrapeVrboApi(url, onProgress = null) {
 
           // Collect images after every navigation
           await collectCurrentImages();
+
+          // Check if we're still finding new images
+          if (collectedUrls.size === lastImageCount) {
+            noNewImagesCount++;
+            if (noNewImagesCount >= 5) {
+              progress('No new images found, stopping gallery collection');
+              break;
+            }
+          } else {
+            noNewImagesCount = 0;
+            lastImageCount = collectedUrls.size;
+          }
         }
 
         // Extra wait and final collection
@@ -928,6 +980,9 @@ async function scrapeVrboApi(url, onProgress = null) {
 
     saveMetadata(downloadDir, metadata);
 
+    // Increment browser use count on successful scrape
+    browserUseCount++;
+
     return {
       success: true,
       platform: 'vrbo',
@@ -935,7 +990,7 @@ async function scrapeVrboApi(url, onProgress = null) {
     };
 
   } catch (error) {
-    await page.close().catch(() => {});
+    await safeClosePage(page);
     throw error;
   }
 }

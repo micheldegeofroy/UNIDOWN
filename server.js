@@ -17,6 +17,36 @@ const logger = {
   error(message, meta) { console.error(this._format('ERROR', message, meta)); },
   debug(message, meta) { if (process.env.DEBUG) console.log(this._format('DEBUG', message, meta)); }
 };
+// Simple in-memory lock for listing operations to prevent race conditions
+const listingLocks = new Map();
+
+async function acquireListingLock(listingId, timeout = 30000) {
+  const startTime = Date.now();
+  while (listingLocks.has(listingId)) {
+    if (Date.now() - startTime > timeout) {
+      throw new Error('Lock timeout: listing is being modified by another request');
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  listingLocks.set(listingId, Date.now());
+}
+
+function releaseListingLock(listingId) {
+  listingLocks.delete(listingId);
+}
+
+// Clean up stale locks periodically (in case of crashes)
+setInterval(() => {
+  const now = Date.now();
+  const STALE_LOCK_MS = 60000; // 1 minute
+  for (const [id, timestamp] of listingLocks.entries()) {
+    if (now - timestamp > STALE_LOCK_MS) {
+      logger.warn('Cleaning up stale lock', { listingId: id });
+      listingLocks.delete(id);
+    }
+  }
+}, 30000);
+
 const { scrapeAirbnbApi, searchAirbnbApi } = require('./scrapers/airbnb-api');
 const { scrapeAirbnb, searchAirbnbProperty, proxyManager: airbnbProxyManager } = require('./scrapers/airbnb');
 const { scrapeBookingApi, closeBrowser: closeBookingBrowser } = require('./scrapers/booking-api');
@@ -74,9 +104,31 @@ function validateListingUrl(urlString) {
 // Shared proxy manager
 const proxyManager = new ProxyManager();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// CORS configuration - allow localhost origins only for security
+const allowedOrigins = [
+  'http://localhost:30002',
+  'http://127.0.0.1:30002',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or same-origin)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // For development, also allow any localhost port
+    if (origin.match(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' })); // Explicit limit for large metadata
 app.use(express.static('public'));
 app.use('/downloads', express.static('downloads'));
 
@@ -160,16 +212,33 @@ async function findListingById(id) {
 
 let scrapeProgress = { message: '', timestamp: 0 };
 let scrapeProgressClients = [];
+const MAX_SSE_CLIENTS = 50;
+
+function removeSSEClient(client) {
+  scrapeProgressClients = scrapeProgressClients.filter(c => c !== client);
+}
 
 function updateScrapeProgress(message) {
   scrapeProgress = { message, timestamp: Date.now() };
-  // Send to all connected SSE clients
+  // Send to all connected SSE clients, remove dead ones
+  const deadClients = [];
   scrapeProgressClients.forEach(client => {
-    client.write(`data: ${JSON.stringify(scrapeProgress)}\n\n`);
+    try {
+      client.write(`data: ${JSON.stringify(scrapeProgress)}\n\n`);
+    } catch (err) {
+      deadClients.push(client);
+    }
   });
+  // Clean up dead clients
+  deadClients.forEach(removeSSEClient);
 }
 
 app.get('/api/scrape/progress', (req, res) => {
+  // Limit max concurrent SSE clients
+  if (scrapeProgressClients.length >= MAX_SSE_CLIENTS) {
+    return res.status(503).json({ error: 'Too many SSE connections' });
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -180,10 +249,9 @@ app.get('/api/scrape/progress', (req, res) => {
   // Add client to list
   scrapeProgressClients.push(res);
 
-  // Remove client on disconnect
-  req.on('close', () => {
-    scrapeProgressClients = scrapeProgressClients.filter(client => client !== res);
-  });
+  // Remove client on disconnect or error
+  req.on('close', () => removeSSEClient(res));
+  res.on('error', () => removeSSEClient(res));
 });
 
 // ============================================
@@ -335,7 +403,12 @@ async function mergeWithExistingListing(scrapedUrl, newResult) {
           const filename = path.basename(newImg.local);
           const destPath = path.join(existingImagesDir, filename);
           if (!fs.existsSync(destPath)) {
-            fs.copyFileSync(srcPath, destPath);
+            try {
+              fs.copyFileSync(srcPath, destPath);
+            } catch (err) {
+              logger.warn('Failed to copy image during merge', { src: srcPath, dest: destPath, error: err.message });
+              continue;
+            }
           }
           existingImages.push({
             local: `/downloads/${existingFolder}/images/${filename}`,
@@ -381,10 +454,20 @@ async function mergeWithExistingListing(scrapedUrl, newResult) {
   }
 
   // Save updated metadata
-  fs.writeFileSync(existingMetaPath, JSON.stringify(existingListing, null, 2));
+  try {
+    fs.writeFileSync(existingMetaPath, JSON.stringify(existingListing, null, 2));
+  } catch (err) {
+    logger.error('Failed to save merged metadata', { path: existingMetaPath, error: err.message });
+    throw new Error('Failed to save merged listing');
+  }
 
   // Delete the new folder (we merged its content)
-  fs.rmSync(path.join(downloadsDir, newFolder), { recursive: true });
+  try {
+    fs.rmSync(path.join(downloadsDir, newFolder), { recursive: true });
+  } catch (err) {
+    logger.warn('Failed to delete merged source folder', { folder: newFolder, error: err.message });
+    // Non-fatal: continue even if cleanup fails
+  }
 
   console.log(`Merged ${addedImages} new images and ${addedAmenities} new amenities`);
 
@@ -438,7 +521,12 @@ app.post('/api/saved-urls', (req, res) => {
   };
 
   savedUrls.push(newEntry);
-  fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+  try {
+    fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+  } catch (err) {
+    logger.error('Failed to save URLs', { error: err.message });
+    return res.status(500).json({ error: 'Failed to save URL' });
+  }
 
   res.json({ success: true, entry: newEntry });
 });
@@ -459,7 +547,12 @@ app.delete('/api/saved-urls/:id', (req, res) => {
   }
 
   savedUrls.splice(index, 1);
-  fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+  try {
+    fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+  } catch (err) {
+    logger.error('Failed to delete saved URL', { error: err.message });
+    return res.status(500).json({ error: 'Failed to delete URL' });
+  }
 
   res.json({ success: true });
 });
@@ -484,7 +577,12 @@ app.patch('/api/saved-urls/:id', (req, res) => {
     savedUrls[index].name = name.trim();
   }
 
-  fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+  try {
+    fs.writeFileSync(savedUrlsPath, JSON.stringify(savedUrls, null, 2));
+  } catch (err) {
+    logger.error('Failed to update saved URL', { error: err.message });
+    return res.status(500).json({ error: 'Failed to update URL' });
+  }
 
   res.json({ success: true, entry: savedUrls[index] });
 });
@@ -529,13 +627,23 @@ app.delete('/api/listings/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const listing = await findListingById(id);
-    if (listing) {
-      await fsPromises.rm(path.join(downloadsDir, listing.folder), { recursive: true });
-      return res.json({ success: true });
+    // Acquire lock to prevent concurrent modifications
+    await acquireListingLock(id);
+
+    try {
+      const listing = await findListingById(id);
+      if (listing) {
+        await fsPromises.rm(path.join(downloadsDir, listing.folder), { recursive: true });
+        return res.json({ success: true });
+      }
+      res.status(404).json({ error: 'Listing not found' });
+    } finally {
+      releaseListingLock(id);
     }
-    res.status(404).json({ error: 'Listing not found' });
   } catch (error) {
+    if (error.message.includes('Lock timeout')) {
+      return res.status(409).json({ error: 'Listing is being modified by another request' });
+    }
     console.error('Error deleting listing:', error);
     res.status(500).json({ error: 'Failed to delete listing' });
   }
@@ -547,12 +655,17 @@ app.patch('/api/listings/:id', async (req, res) => {
   const { title, sourceUrl, description, location, gps, amenities, images } = req.body;
 
   try {
-    const listing = await findListingById(id);
-    if (!listing) {
-      return res.status(404).json({ error: 'Listing not found' });
-    }
+    // Acquire lock to prevent concurrent modifications
+    await acquireListingLock(id);
 
-    const { metadata, folder, metaPath } = listing;
+    try {
+      const listing = await findListingById(id);
+      if (!listing) {
+        releaseListingLock(id);
+        return res.status(404).json({ error: 'Listing not found' });
+      }
+
+      const { metadata, folder, metaPath } = listing;
 
     // Update fields
     if (title !== undefined) metadata.title = title;
@@ -601,13 +714,19 @@ app.patch('/api/listings/:id', async (req, res) => {
     // Save updated metadata
     await fsPromises.writeFile(metaPath, JSON.stringify(metadata, null, 2));
 
-    // Also update description.txt
-    if (description !== undefined) {
-      await fsPromises.writeFile(path.join(downloadsDir, folder, 'description.txt'), description);
-    }
+      // Also update description.txt
+      if (description !== undefined) {
+        await fsPromises.writeFile(path.join(downloadsDir, folder, 'description.txt'), description);
+      }
 
-    res.json({ success: true, listing: metadata });
+      res.json({ success: true, listing: metadata });
+    } finally {
+      releaseListingLock(id);
+    }
   } catch (error) {
+    if (error.message.includes('Lock timeout')) {
+      return res.status(409).json({ error: 'Listing is being modified by another request' });
+    }
     console.error('Error updating listing:', error);
     res.status(500).json({ error: 'Failed to update listing' });
   }
@@ -932,20 +1051,33 @@ app.get('/api/listings/:id/zip', async (req, res) => {
 
           // Add images with clean names
           const imagesPath = path.join(folderPath, 'images');
+          const resolvedImagesPath = path.resolve(imagesPath);
           if (fs.existsSync(imagesPath)) {
             const imageFiles = fs.readdirSync(imagesPath);
             let imgCount = 1;
 
             for (const file of imageFiles) {
               const filePath = path.join(imagesPath, file);
+              const resolvedFilePath = path.resolve(filePath);
+
+              // Path traversal protection: ensure file is within images directory
+              if (!resolvedFilePath.startsWith(resolvedImagesPath + path.sep)) {
+                logger.warn('Zip path traversal blocked', { file, filePath });
+                continue;
+              }
+
+              // Ensure it's a file, not a directory
+              const stat = fs.statSync(resolvedFilePath);
+              if (!stat.isFile()) continue;
+
               const ext = path.extname(file).toLowerCase() || '.jpg';
 
               // Keep host_avatar with its name
               if (file.includes('host_avatar')) {
-                archive.file(filePath, { name: `images/host_avatar${ext}` });
+                archive.file(resolvedFilePath, { name: `images/host_avatar${ext}` });
               } else {
                 // Rename to img1, img2, etc.
-                archive.file(filePath, { name: `images/img${imgCount}${ext}` });
+                archive.file(resolvedFilePath, { name: `images/img${imgCount}${ext}` });
                 imgCount++;
               }
             }
@@ -968,10 +1100,12 @@ app.get('/api/listings/:id/zip', async (req, res) => {
 
 let clipPipeline = null;
 let clipModelLoading = false;
+let clipModelFailed = false;
 
 // Initialize CLIP model (lazy loading)
 async function getClipPipeline() {
   if (clipPipeline) return clipPipeline;
+  if (clipModelFailed) return null; // Don't retry if it already failed
   if (clipModelLoading) {
     // Wait for model to load
     while (clipModelLoading) {
@@ -990,10 +1124,16 @@ async function getClipPipeline() {
   } catch (error) {
     console.error('Failed to load CLIP model:', error.message);
     clipPipeline = null;
+    clipModelFailed = true;
   }
 
   clipModelLoading = false;
   return clipPipeline;
+}
+
+// Check if CLIP is available
+function isClipAvailable() {
+  return clipPipeline !== null && !clipModelFailed;
 }
 
 // Calculate cosine similarity between two vectors
@@ -1144,6 +1284,15 @@ app.post('/api/images/analyze', async (req, res) => {
 
   if (!images || !Array.isArray(images)) {
     return res.status(400).json({ error: 'Images array is required' });
+  }
+
+  // Check if CLIP model is available
+  const pipeline = await getClipPipeline();
+  if (!pipeline) {
+    return res.status(503).json({
+      success: false,
+      error: 'CLIP model is not available. Image similarity analysis is disabled.'
+    });
   }
 
   try {
@@ -1815,8 +1964,43 @@ app.get('/api/settings', (req, res) => {
 
 app.post('/api/settings', (req, res) => {
   const settingsPath = path.join(configDir, 'settings.json');
-  fs.writeFileSync(settingsPath, JSON.stringify(req.body, null, 2));
-  res.json({ success: true });
+
+  // Whitelist allowed settings keys and validate types
+  const allowedSettings = {
+    stealth: {
+      blockBotDetection: 'boolean',
+      randomizeTimezone: 'boolean',
+      randomizeFingerprint: 'boolean',
+      humanDelays: 'boolean'
+    },
+    torEnabled: 'boolean'
+  };
+
+  const validated = {};
+
+  // Validate stealth settings
+  if (req.body.stealth && typeof req.body.stealth === 'object') {
+    validated.stealth = {};
+    for (const key of Object.keys(allowedSettings.stealth)) {
+      if (typeof req.body.stealth[key] === 'boolean') {
+        validated.stealth[key] = req.body.stealth[key];
+      }
+    }
+  }
+
+  // Validate torEnabled
+  if (typeof req.body.torEnabled === 'boolean') {
+    validated.torEnabled = req.body.torEnabled;
+  }
+
+  try {
+    fs.writeFileSync(settingsPath, JSON.stringify(validated, null, 2));
+  } catch (err) {
+    logger.error('Failed to save settings', { error: err.message });
+    return res.status(500).json({ error: 'Failed to save settings' });
+  }
+
+  res.json({ success: true, settings: validated });
 });
 
 // ============================================
@@ -1844,13 +2028,39 @@ app.get('/api/profiles', (req, res) => {
 
 app.delete('/api/profiles/:name', (req, res) => {
   const profilesDir = path.join(__dirname, 'browser_profiles');
-  const profilePath = path.join(profilesDir, req.params.name);
+  const profileName = req.params.name;
 
-  if (fs.existsSync(profilePath)) {
-    fs.rmSync(profilePath, { recursive: true });
+  // Validate profile name (no path traversal characters)
+  if (!profileName || /[\/\\\.]{2,}|^\.\.?$/.test(profileName)) {
+    return res.status(400).json({ error: 'Invalid profile name' });
+  }
+
+  const profilePath = path.join(profilesDir, profileName);
+  const resolvedPath = path.resolve(profilePath);
+  const resolvedProfilesDir = path.resolve(profilesDir);
+
+  // Path traversal protection: ensure profile path is within profiles directory
+  if (!resolvedPath.startsWith(resolvedProfilesDir + path.sep)) {
+    logger.warn('Profile delete path traversal blocked', { profileName, resolvedPath });
+    return res.status(400).json({ error: 'Invalid profile path' });
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    return res.status(404).json({ error: 'Profile not found' });
+  }
+
+  // Verify it's a directory
+  const stat = fs.statSync(resolvedPath);
+  if (!stat.isDirectory()) {
+    return res.status(400).json({ error: 'Invalid profile' });
+  }
+
+  try {
+    fs.rmSync(resolvedPath, { recursive: true });
     res.json({ success: true });
-  } else {
-    res.status(404).json({ error: 'Profile not found' });
+  } catch (err) {
+    logger.error('Failed to delete profile', { profileName, error: err.message });
+    res.status(500).json({ error: 'Failed to delete profile' });
   }
 });
 
