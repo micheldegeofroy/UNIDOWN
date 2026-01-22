@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
+const rateLimit = require('express-rate-limit');
 const { scrapeAirbnbApi, searchAirbnbApi } = require('./scrapers/airbnb-api');
 const { scrapeAirbnb, searchAirbnbProperty, proxyManager: airbnbProxyManager } = require('./scrapers/airbnb');
 const { scrapeBookingApi, closeBrowser: closeBookingBrowser } = require('./scrapers/booking-api');
@@ -10,6 +12,16 @@ const { ProxyManager } = require('./scrapers/stealth');
 
 const app = express();
 const PORT = process.env.PORT || 30002;
+
+// Safe JSON parse helper - returns defaultValue on parse error
+function safeJsonParse(str, defaultValue = null) {
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    console.error('JSON parse error:', e.message);
+    return defaultValue;
+  }
+}
 
 // Shared proxy manager
 const proxyManager = new ProxyManager();
@@ -20,6 +32,28 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/downloads', express.static('downloads'));
 
+// Rate limiting - protect API endpoints from abuse
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 60, // 60 requests per minute per IP
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limit for scraping endpoints (resource intensive)
+const scrapeLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 10, // 10 scrapes per minute per IP
+  message: { error: 'Too many scrape requests, please wait before trying again' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to API routes
+app.use('/api/', apiLimiter);
+app.use('/api/scrape', scrapeLimiter);
+
 // Ensure directories exist
 const downloadsDir = path.join(__dirname, 'downloads');
 const configDir = path.join(__dirname, 'config');
@@ -28,6 +62,34 @@ if (!fs.existsSync(downloadsDir)) {
 }
 if (!fs.existsSync(configDir)) {
   fs.mkdirSync(configDir, { recursive: true });
+}
+
+// ============================================
+// LISTING LOOKUP HELPER (Optimized)
+// ============================================
+
+// Find a listing by ID - returns { metadata, folder, metaPath } or null
+async function findListingById(id) {
+  if (!fs.existsSync(downloadsDir)) return null;
+
+  const folders = await fsPromises.readdir(downloadsDir);
+
+  // Search in parallel for better performance
+  const results = await Promise.all(folders.map(async (folder) => {
+    const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+    try {
+      const content = await fsPromises.readFile(metaPath, 'utf8');
+      const metadata = safeJsonParse(content, null);
+      if (metadata && metadata.id === id) {
+        return { metadata, folder, metaPath };
+      }
+    } catch {
+      // File doesn't exist or can't be read
+    }
+    return null;
+  }));
+
+  return results.find(r => r !== null) || null;
 }
 
 // ============================================
@@ -170,7 +232,7 @@ async function mergeWithExistingListing(scrapedUrl, newResult) {
   for (const folder of folders) {
     const metaPath = path.join(downloadsDir, folder, 'metadata.json');
     if (fs.existsSync(metaPath)) {
-      const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      const metadata = safeJsonParse(fs.readFileSync(metaPath, 'utf8'), {});
       const normalizedExistingUrl = normalizeUrl(metadata.sourceUrl || '');
 
       if (metadata.id === newResult.id) {
@@ -191,7 +253,7 @@ async function mergeWithExistingListing(scrapedUrl, newResult) {
 
   const existingMetaPath = path.join(downloadsDir, existingFolder, 'metadata.json');
   const newMetaPath = path.join(downloadsDir, newFolder, 'metadata.json');
-  const newMetadata = JSON.parse(fs.readFileSync(newMetaPath, 'utf8'));
+  const newMetadata = safeJsonParse(fs.readFileSync(newMetaPath, 'utf8'), {});
 
   // Merge images (copy new images to existing folder, avoid duplicates)
   const existingImages = existingListing.images || [];
@@ -277,7 +339,7 @@ const savedUrlsPath = path.join(configDir, 'saved-urls.json');
 app.get('/api/saved-urls', (req, res) => {
   let savedUrls = [];
   if (fs.existsSync(savedUrlsPath)) {
-    savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
+    savedUrls = safeJsonParse(fs.readFileSync(savedUrlsPath, 'utf8'), []);
   }
   res.json(savedUrls);
 });
@@ -290,13 +352,13 @@ app.post('/api/saved-urls', (req, res) => {
     return res.status(400).json({ error: 'Name and URL are required' });
   }
 
-  if (!url.includes('airbnb.com') && !url.includes('booking.com')) {
-    return res.status(400).json({ error: 'Please provide a valid Airbnb or Booking.com URL' });
+  if (!url.includes('airbnb.com') && !url.includes('booking.com') && !url.includes('vrbo.com')) {
+    return res.status(400).json({ error: 'Please provide a valid Airbnb, Booking.com, or VRBO URL' });
   }
 
   let savedUrls = [];
   if (fs.existsSync(savedUrlsPath)) {
-    savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
+    savedUrls = safeJsonParse(fs.readFileSync(savedUrlsPath, 'utf8'), []);
   }
 
   // Check for duplicates
@@ -326,7 +388,7 @@ app.delete('/api/saved-urls/:id', (req, res) => {
     return res.status(404).json({ error: 'No saved URLs found' });
   }
 
-  let savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
+  let savedUrls = safeJsonParse(fs.readFileSync(savedUrlsPath, 'utf8'), []);
   const index = savedUrls.findIndex(item => String(item.id) === String(id));
 
   if (index === -1) {
@@ -348,7 +410,7 @@ app.patch('/api/saved-urls/:id', (req, res) => {
     return res.status(404).json({ error: 'No saved URLs found' });
   }
 
-  let savedUrls = JSON.parse(fs.readFileSync(savedUrlsPath, 'utf8'));
+  let savedUrls = safeJsonParse(fs.readFileSync(savedUrlsPath, 'utf8'), []);
   const index = savedUrls.findIndex(item => String(item.id) === String(id));
 
   if (index === -1) {
@@ -368,133 +430,124 @@ app.patch('/api/saved-urls/:id', (req, res) => {
 // LISTINGS API
 // ============================================
 
-app.get('/api/listings', (req, res) => {
-  const listings = [];
-
-  if (fs.existsSync(downloadsDir)) {
-    const folders = fs.readdirSync(downloadsDir);
-
-    for (const folder of folders) {
-      const metaPath = path.join(downloadsDir, folder, 'metadata.json');
-      if (fs.existsSync(metaPath)) {
-        const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        listings.push(metadata);
-      }
+app.get('/api/listings', async (req, res) => {
+  try {
+    if (!fs.existsSync(downloadsDir)) {
+      return res.json([]);
     }
+
+    const folders = await fsPromises.readdir(downloadsDir);
+
+    // Read all metadata files in parallel for better performance
+    const metadataPromises = folders.map(async (folder) => {
+      const metaPath = path.join(downloadsDir, folder, 'metadata.json');
+      try {
+        const content = await fsPromises.readFile(metaPath, 'utf8');
+        return safeJsonParse(content, null);
+      } catch {
+        return null; // File doesn't exist or can't be read
+      }
+    });
+
+    const results = await Promise.all(metadataPromises);
+    const listings = results.filter(m => m !== null);
+
+    // Sort by date, newest first
+    listings.sort((a, b) => new Date(b.scrapedAt) - new Date(a.scrapedAt));
+
+    res.json(listings);
+  } catch (error) {
+    console.error('Error loading listings:', error);
+    res.status(500).json({ error: 'Failed to load listings' });
   }
-
-  // Sort by date, newest first
-  listings.sort((a, b) => new Date(b.scrapedAt) - new Date(a.scrapedAt));
-
-  res.json(listings);
 });
 
-app.delete('/api/listings/:id', (req, res) => {
+app.delete('/api/listings/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (fs.existsSync(downloadsDir)) {
-    const folders = fs.readdirSync(downloadsDir);
-
-    for (const folder of folders) {
-      const metaPath = path.join(downloadsDir, folder, 'metadata.json');
-      if (fs.existsSync(metaPath)) {
-        const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        if (metadata.id === id) {
-          // Delete the folder
-          fs.rmSync(path.join(downloadsDir, folder), { recursive: true });
-          return res.json({ success: true });
-        }
-      }
+  try {
+    const listing = await findListingById(id);
+    if (listing) {
+      await fsPromises.rm(path.join(downloadsDir, listing.folder), { recursive: true });
+      return res.json({ success: true });
     }
+    res.status(404).json({ error: 'Listing not found' });
+  } catch (error) {
+    console.error('Error deleting listing:', error);
+    res.status(500).json({ error: 'Failed to delete listing' });
   }
-
-  res.status(404).json({ error: 'Listing not found' });
 });
 
 // Edit listing metadata (title, description, amenities, images, sourceUrl, location, gps)
-app.patch('/api/listings/:id', (req, res) => {
+app.patch('/api/listings/:id', async (req, res) => {
   const { id } = req.params;
   const { title, sourceUrl, description, location, gps, amenities, images } = req.body;
 
-  console.log('PATCH /api/listings/:id - Looking for listing:', id);
-  console.log('Received sourceUrl:', sourceUrl);
+  try {
+    const listing = await findListingById(id);
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
 
-  if (fs.existsSync(downloadsDir)) {
-    const folders = fs.readdirSync(downloadsDir);
-    console.log('Searching through', folders.length, 'folders');
+    const { metadata, folder, metaPath } = listing;
 
-    for (const folder of folders) {
-      const metaPath = path.join(downloadsDir, folder, 'metadata.json');
-      if (fs.existsSync(metaPath)) {
-        const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        if (metadata.id === id) {
-          console.log('Found listing:', metadata.id, 'in folder:', folder);
-          console.log('Old sourceUrl:', metadata.sourceUrl);
-          // Update fields
-          if (title !== undefined) metadata.title = title;
-          if (sourceUrl !== undefined) {
-            console.log('Updating sourceUrl to:', sourceUrl);
-            metadata.sourceUrl = sourceUrl;
-          }
-          console.log('New sourceUrl:', metadata.sourceUrl);
-          if (description !== undefined) metadata.description = description;
+    // Update fields
+    if (title !== undefined) metadata.title = title;
+    if (sourceUrl !== undefined) metadata.sourceUrl = sourceUrl;
+    if (description !== undefined) metadata.description = description;
 
-          // Update location if provided
-          if (location !== undefined) {
-            // Initialize location object if it doesn't exist
-            if (!metadata.location) metadata.location = {};
-            // Parse location string "Address, City, Country"
-            const parts = location.split(',').map(p => p.trim());
-            if (parts.length >= 1) metadata.location.address = parts[0] || '';
-            if (parts.length >= 2) metadata.location.city = parts[1] || '';
-            if (parts.length >= 3) metadata.location.country = parts[2] || '';
-          }
+    // Update location if provided
+    if (location !== undefined) {
+      if (!metadata.location) metadata.location = {};
+      const parts = location.split(',').map(p => p.trim());
+      if (parts.length >= 1) metadata.location.address = parts[0] || '';
+      if (parts.length >= 2) metadata.location.city = parts[1] || '';
+      if (parts.length >= 3) metadata.location.country = parts[2] || '';
+    }
 
-          // Update GPS if provided
-          if (gps !== undefined) {
-            if (!metadata.location) metadata.location = {};
-            // Parse GPS string "lat, lng"
-            const coords = gps.split(',').map(p => parseFloat(p.trim()));
-            if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
-              metadata.location.lat = coords[0];
-              metadata.location.lng = coords[1];
-            }
-          }
-
-          if (amenities !== undefined) metadata.amenities = amenities;
-          if (images !== undefined) {
-            // Delete removed images from disk
-            const oldImages = metadata.images || [];
-            const newImagePaths = images.map(img => img.local);
-            for (const oldImg of oldImages) {
-              if (oldImg.local && !newImagePaths.includes(oldImg.local)) {
-                const imgPath = path.join(__dirname, oldImg.local);
-                if (fs.existsSync(imgPath)) {
-                  fs.unlinkSync(imgPath);
-                }
-              }
-            }
-            metadata.images = images;
-          }
-          metadata.editedAt = new Date().toISOString();
-
-          // Save updated metadata
-          fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
-          console.log('Saved updated metadata to:', metaPath);
-
-          // Also update description.txt
-          if (description !== undefined) {
-            fs.writeFileSync(path.join(downloadsDir, folder, 'description.txt'), description);
-          }
-
-          return res.json({ success: true, listing: metadata });
+    // Update GPS if provided (with bounds validation)
+    if (gps !== undefined) {
+      if (!metadata.location) metadata.location = {};
+      const coords = gps.split(',').map(p => parseFloat(p.trim()));
+      if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        const [lat, lng] = coords;
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          metadata.location.lat = lat;
+          metadata.location.lng = lng;
         }
       }
     }
-  }
 
-  console.log('Listing not found with id:', id);
-  res.status(404).json({ error: 'Listing not found' });
+    if (amenities !== undefined) metadata.amenities = amenities;
+    if (images !== undefined) {
+      // Delete removed images from disk
+      const oldImages = metadata.images || [];
+      const newImagePaths = images.map(img => img.local);
+      for (const oldImg of oldImages) {
+        if (oldImg.local && !newImagePaths.includes(oldImg.local)) {
+          const imgPath = path.join(__dirname, oldImg.local);
+          if (fs.existsSync(imgPath)) {
+            fs.unlinkSync(imgPath);
+          }
+        }
+      }
+      metadata.images = images;
+    }
+    metadata.editedAt = new Date().toISOString();
+
+    // Save updated metadata
+    await fsPromises.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+
+    // Also update description.txt
+    if (description !== undefined) {
+      await fsPromises.writeFile(path.join(downloadsDir, folder, 'description.txt'), description);
+    }
+
+    res.json({ success: true, listing: metadata });
+  } catch (error) {
+    console.error('Error updating listing:', error);
+    res.status(500).json({ error: 'Failed to update listing' });
+  }
 });
 
 // Update listing (re-scrape and aggregate data)
@@ -502,40 +555,27 @@ app.post('/api/listings/:id/update', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Find the existing listing
-    let existingMetadata = null;
-    let listingFolder = null;
-
-    if (fs.existsSync(downloadsDir)) {
-      const folders = fs.readdirSync(downloadsDir);
-
-      for (const folder of folders) {
-        const metaPath = path.join(downloadsDir, folder, 'metadata.json');
-        if (fs.existsSync(metaPath)) {
-          const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-          if (metadata.id === id) {
-            existingMetadata = metadata;
-            listingFolder = folder;
-            break;
-          }
-        }
-      }
-    }
-
-    if (!existingMetadata || !existingMetadata.sourceUrl) {
+    // Find the existing listing using optimized helper
+    const listing = await findListingById(id);
+    if (!listing || !listing.metadata.sourceUrl) {
       return res.status(404).json({ error: 'Listing not found or missing source URL' });
     }
 
+    const { metadata: existingMetadata, folder: listingFolder } = listing;
+
     console.log(`Updating listing ${id} from ${existingMetadata.sourceUrl}`);
+
+    // Progress callback for update operations (logs to console)
+    const updateProgress = (msg) => console.log(`[Update ${id}] ${msg}`);
 
     // Re-scrape the listing based on platform
     let result;
     if (existingMetadata.platform === 'booking' || existingMetadata.sourceUrl.includes('booking.com')) {
-      result = await scrapeBookingApi(existingMetadata.sourceUrl);
+      result = await scrapeBookingApi(existingMetadata.sourceUrl, updateProgress);
     } else if (existingMetadata.platform === 'vrbo' || existingMetadata.sourceUrl.includes('vrbo.com')) {
-      result = await scrapeVrboApi(existingMetadata.sourceUrl);
+      result = await scrapeVrboApi(existingMetadata.sourceUrl, updateProgress);
     } else {
-      result = await scrapeAirbnbApi(existingMetadata.sourceUrl);
+      result = await scrapeAirbnbApi(existingMetadata.sourceUrl, updateProgress);
     }
 
     if (!result.success) {
@@ -544,30 +584,10 @@ app.post('/api/listings/:id/update', async (req, res) => {
 
     // Load the newly scraped metadata
     const newMetaPath = path.join(downloadsDir, listingFolder, 'metadata.json');
-    const newMetadata = JSON.parse(fs.readFileSync(newMetaPath, 'utf8'));
+    const newMetadata = safeJsonParse(fs.readFileSync(newMetaPath, 'utf8'), {});
 
-    // Aggregate data - merge existing with new
-    const aggregatedMetadata = {
-      ...newMetadata,
-      // Keep the original scraped date, add update date
-      firstScrapedAt: existingMetadata.firstScrapedAt || existingMetadata.scrapedAt,
-      scrapedAt: new Date().toISOString(),
-      // Merge images (avoid duplicates based on original URL)
-      images: mergeImages(existingMetadata.images || [], newMetadata.images || []),
-      // Merge amenities (avoid duplicates)
-      amenities: [...new Set([...(existingMetadata.amenities || []), ...(newMetadata.amenities || [])])],
-      // Merge house rules (avoid duplicates)
-      houseRules: [...new Set([...(existingMetadata.houseRules || []), ...(newMetadata.houseRules || [])])],
-      // Keep non-null values (prefer new data, but keep old if new is empty)
-      description: newMetadata.description || existingMetadata.description,
-      title: newMetadata.title || existingMetadata.title,
-      // Keep historical data
-      updateCount: (existingMetadata.updateCount || 0) + 1,
-      updateHistory: [
-        ...(existingMetadata.updateHistory || []),
-        { date: new Date().toISOString() }
-      ]
-    };
+    // Aggregate data - ADDITIVE ONLY: existing data is preserved, new data can only fill gaps
+    const aggregatedMetadata = mergeMetadataAdditive(existingMetadata, newMetadata);
 
     // Calculate new images added
     const newImagesCount = aggregatedMetadata.images.length - (existingMetadata.images || []).length;
@@ -603,7 +623,7 @@ function mergeImages(existingImages, newImages) {
     }
   }
 
-  // Add new images (will overwrite if same URL)
+  // Add new images only if they don't already exist
   for (const img of newImages) {
     const key = img.original || img.local;
     if (key && !imageMap.has(key)) {
@@ -612,6 +632,81 @@ function mergeImages(existingImages, newImages) {
   }
 
   return Array.from(imageMap.values());
+}
+
+// ADDITIVE-ONLY merge: existing data is preserved, new data can only fill empty fields and add to arrays
+function mergeMetadataAdditive(existing, newData) {
+  const result = { ...existing };
+
+  // Fields that should NEVER be overwritten if they have a value
+  const protectedStringFields = [
+    'id', 'title', 'description', 'location', 'address', 'city', 'country',
+    'propertyType', 'hostName', 'hostAvatar', 'hostAbout', 'hostSuperhost',
+    'hostJoined', 'sourceUrl', 'platform', 'currency', 'pricePerNight',
+    'originalPrice', 'cleaningFee', 'serviceFee', 'guests', 'bedrooms',
+    'beds', 'bathrooms', 'rating', 'reviewCount', 'checkIn', 'checkOut',
+    'responseRate', 'responseTime', 'cancellationPolicy', 'coordinates'
+  ];
+
+  // Only fill empty string/null fields - NEVER overwrite existing values
+  for (const field of protectedStringFields) {
+    const existingValue = existing[field];
+    const newValue = newData[field];
+
+    // Only update if existing is empty/null/undefined AND new has a value
+    if ((existingValue === null || existingValue === undefined || existingValue === '') &&
+        newValue !== null && newValue !== undefined && newValue !== '') {
+      result[field] = newValue;
+    }
+    // If existing has a value, keep it (don't overwrite)
+  }
+
+  // Array fields: only ADD new items, never remove existing ones
+  // Images - merge without duplicates
+  result.images = mergeImages(existing.images || [], newData.images || []);
+
+  // Amenities - add new ones, keep all existing
+  const existingAmenities = new Set(existing.amenities || []);
+  const newAmenities = newData.amenities || [];
+  for (const amenity of newAmenities) {
+    existingAmenities.add(amenity);
+  }
+  result.amenities = Array.from(existingAmenities);
+
+  // House rules - add new ones, keep all existing
+  const existingRules = new Set(existing.houseRules || []);
+  const newRules = newData.houseRules || [];
+  for (const rule of newRules) {
+    existingRules.add(rule);
+  }
+  result.houseRules = Array.from(existingRules);
+
+  // Highlights - add new ones, keep all existing
+  const existingHighlights = new Set(existing.highlights || []);
+  const newHighlights = newData.highlights || [];
+  for (const highlight of newHighlights) {
+    existingHighlights.add(highlight);
+  }
+  result.highlights = Array.from(existingHighlights);
+
+  // Safety items - add new ones, keep all existing
+  const existingSafety = new Set(existing.safetyItems || []);
+  const newSafety = newData.safetyItems || [];
+  for (const item of newSafety) {
+    existingSafety.add(item);
+  }
+  result.safetyItems = Array.from(existingSafety);
+
+  // Update tracking metadata
+  result.firstScrapedAt = existing.firstScrapedAt || existing.scrapedAt;
+  result.lastUpdatedAt = new Date().toISOString();
+  result.updateCount = (existing.updateCount || 0) + 1;
+  result.updateHistory = [
+    ...(existing.updateHistory || []),
+    { date: new Date().toISOString() }
+  ];
+
+  return result;
 }
 
 // Generate listing info text file content
@@ -713,7 +808,7 @@ app.get('/api/listings/:id/zip', async (req, res) => {
     for (const folder of folders) {
       const metaPath = path.join(downloadsDir, folder, 'metadata.json');
       if (fs.existsSync(metaPath)) {
-        const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        const metadata = safeJsonParse(fs.readFileSync(metaPath, 'utf8'), {});
         if (metadata.id === id) {
           const folderPath = path.join(downloadsDir, folder);
 
@@ -830,7 +925,7 @@ async function getImageEmbedding(imagePath) {
   if (!extractor) return null;
 
   try {
-    // Resolve the full path
+    // Resolve the full path with path traversal protection
     let fullPath = imagePath;
     if (imagePath.startsWith('/downloads/')) {
       fullPath = path.join(__dirname, imagePath);
@@ -838,6 +933,18 @@ async function getImageEmbedding(imagePath) {
       fullPath = path.join(__dirname, imagePath);
     } else if (!path.isAbsolute(imagePath)) {
       fullPath = path.join(__dirname, 'public', imagePath);
+    }
+
+    // Resolve to absolute path and check for path traversal
+    fullPath = path.resolve(fullPath);
+    const allowedDirs = [
+      path.resolve(__dirname, 'downloads'),
+      path.resolve(__dirname, 'public')
+    ];
+    const isAllowed = allowedDirs.some(dir => fullPath.startsWith(dir + path.sep) || fullPath === dir);
+    if (!isAllowed) {
+      console.log('Path traversal blocked:', imagePath);
+      return null;
     }
 
     if (!fs.existsSync(fullPath)) {
@@ -1028,7 +1135,7 @@ app.post('/api/listings/merge', async (req, res) => {
       for (const folder of folders) {
         const metaPath = path.join(downloadsDir, folder, 'metadata.json');
         if (fs.existsSync(metaPath)) {
-          const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+          const metadata = safeJsonParse(fs.readFileSync(metaPath, 'utf8'), {});
           if (metadata.id === leftId) leftListing = { ...metadata, folder };
           if (metadata.id === rightId) rightListing = { ...metadata, folder };
         }
@@ -1272,8 +1379,9 @@ app.post('/api/proxies/test', async (req, res) => {
     const axios = require('axios');
     const HttpsProxyAgent = require('https-proxy-agent');
 
+    // URL-encode credentials to handle special characters safely
     const proxyUrl = username
-      ? `${type}://${username}:${password}@${host}:${port}`
+      ? `${type}://${encodeURIComponent(username)}:${encodeURIComponent(password || '')}@${host}:${port}`
       : `${type}://${host}:${port}`;
 
     const agent = new HttpsProxyAgent(proxyUrl);
@@ -1302,7 +1410,7 @@ app.post('/api/proxies/test', async (req, res) => {
 // TOR API
 // ============================================
 
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const net = require('net');
 
 // Tor settings state
@@ -1355,7 +1463,7 @@ app.post('/api/tor/toggle', async (req, res) => {
     const settingsPath = path.join(configDir, 'settings.json');
     let settings = {};
     if (fs.existsSync(settingsPath)) {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      settings = safeJsonParse(fs.readFileSync(settingsPath, 'utf8'), {});
     }
     settings.torEnabled = torEnabled;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
@@ -1520,7 +1628,8 @@ async function getTorIp() {
 
 async function startTorService() {
   return new Promise((resolve, reject) => {
-    exec('brew services start tor', (error, stdout, stderr) => {
+    // Use execFile instead of exec to prevent command injection
+    execFile('brew', ['services', 'start', 'tor'], (error, stdout, stderr) => {
       if (error) {
         reject(error);
       } else {
@@ -1533,7 +1642,8 @@ async function startTorService() {
 
 async function restartTorService() {
   return new Promise((resolve, reject) => {
-    exec('brew services restart tor', (error, stdout, stderr) => {
+    // Use execFile instead of exec to prevent command injection
+    execFile('brew', ['services', 'restart', 'tor'], (error, stdout, stderr) => {
       if (error) {
         reject(error);
       } else {
@@ -1547,7 +1657,8 @@ async function requestNewCircuit() {
   // This requires Tor control port to be enabled
   // For now, we'll use service restart as fallback
   return new Promise((resolve, reject) => {
-    exec('killall -HUP tor', (error) => {
+    // Use execFile instead of exec to prevent command injection
+    execFile('killall', ['-HUP', 'tor'], (error) => {
       if (error) {
         reject(error);
       } else {
@@ -1589,7 +1700,7 @@ app.get('/api/settings', (req, res) => {
   };
 
   if (fs.existsSync(settingsPath)) {
-    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    settings = safeJsonParse(fs.readFileSync(settingsPath, 'utf8'), {});
     // Restore Tor state from settings
     if (settings.torEnabled !== undefined) {
       torEnabled = settings.torEnabled;

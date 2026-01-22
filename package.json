@@ -19,6 +19,7 @@
     "cors": "^2.8.5",
     "curl-impersonate": "^0.0.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
     "geoip-lite": "^1.4.10",
     "https-proxy-agent": "^7.0.6",
     "jimp": "^1.6.0",

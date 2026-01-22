@@ -616,8 +616,13 @@ function parseRoomDetails(html, roomUrl) {
 /**
  * Scrape Airbnb listing using API approach
  */
-async function scrapeAirbnbApi(url) {
-  console.log(`Scraping (API): ${url}`);
+async function scrapeAirbnbApi(url, onProgress = null) {
+  const progress = (msg) => {
+    console.log(msg);
+    if (onProgress) onProgress(msg);
+  };
+
+  progress(`Scraping (API): ${url}`);
 
   try {
     // Fetch the page
@@ -651,11 +656,11 @@ async function scrapeAirbnbApi(url) {
 
     // Download all images
     const downloadedImages = [];
-    console.log(`Found ${data.images.length} images to download`);
+    progress(`Found ${data.images.length} images to download`);
     for (let i = 0; i < data.images.length; i++) {
       try {
         const imgUrl = data.images[i];
-        console.log(`Downloading image ${i + 1}/${data.images.length}: ${imgUrl}`);
+        progress(`Downloading image ${i + 1}/${data.images.length}...`);
         const imgResponse = await downloadImage(imgUrl);
 
         if (imgResponse.status === 200 && imgResponse.buffer.length > 1000) {
@@ -686,7 +691,7 @@ async function scrapeAirbnbApi(url) {
     let hostAvatarLocal = null;
     if (data.host && data.host.profilePicture) {
       try {
-        console.log('Downloading host avatar...');
+        progress('Downloading host avatar...');
         const avatarResponse = await downloadImage(data.host.profilePicture);
         if (avatarResponse.status === 200 && avatarResponse.buffer.length > 500) {
           let ext = 'jpg';
